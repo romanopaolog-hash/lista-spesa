@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Lista della Spesa</title>
+
+    <!-- PWA & Theme -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2e7d32" id="theme-color-meta">
+    <meta name="description" content="Lista della spesa familiare condivisa in tempo reale">
+
+    <!-- iOS / Safari PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Lista Spesa">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header App -->
+        <header class="app-header">
+            <h1>Lista della Spesa Familiare</h1>
+            <div class="header-controls">
+                <button type="button" id="wake-lock-btn" class="icon-pill-btn" aria-pressed="false" title="Mantieni schermo attivo durante la spesa">
+                    <span class="btn-icon" aria-hidden="true">💡</span>
+                    <span class="btn-label">Schermo attivo</span>
+                </button>
+                <button type="button" id="theme-toggle-btn" class="icon-btn" aria-label="Cambia tema chiaro/scuro" title="Cambia tema">
+                    <span id="theme-icon" aria-hidden="true">🌙</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Barra Preferiti / Acquisti Frequenti -->
+        <section class="favorites-section" aria-label="Prodotti preferiti">
+            <div class="favorites-header">
+                <span class="favorites-title">⭐ Acquisti frequenti</span>
+                <button type="button" id="add-favorite-btn" class="text-action-btn" title="Salva il prodotto scritto sotto nei preferiti">
+                    + Salva preferito
+                </button>
+            </div>
+            <div id="favorites-bar" class="favorites-bar" role="list"></div>
+        </section>
+
+        <!-- Sezione Input -->
+        <section class="input-section" aria-label="Aggiungi prodotto">
+            <div class="input-row-main">
+                <input type="text" id="item-input" placeholder="Aggiungi un prodotto..." autocomplete="off" enterkeyhint="done">
+                <div class="quantity-controls" aria-label="Quantità">
+                    <button type="button" id="decrease-qty" aria-label="Diminuisci quantità">−</button>
+                    <span id="item-qty" aria-live="polite">1</span>
+                    <button type="button" id="increase-qty" aria-label="Aumenta quantità">+</button>
+                </div>
+            </div>
+
+            <div class="input-row-secondary">
+                <input type="text" id="note-input" placeholder="Nota o unità opzionale (es. 500g, senza lattosio)" autocomplete="off">
+            </div>
+
+            <!-- Selettore rapido Reparto -->
+            <div id="category-chips" class="category-chips" role="radiogroup" aria-label="Seleziona reparto">
+                <button type="button" class="category-chip" data-category="Ortofrutta" aria-pressed="false">🥬 Ortofrutta</button>
+                <button type="button" class="category-chip" data-category="Frigo e Latticini" aria-pressed="false">🧀 Frigo e Latticini</button>
+                <button type="button" class="category-chip" data-category="Dispensa" aria-pressed="false">🍝 Dispensa</button>
+                <button type="button" class="category-chip" data-category="Carne e Pesce" aria-pressed="false">🥩 Carne e Pesce</button>
+                <button type="button" class="category-chip" data-category="Casa e Pulizia" aria-pressed="false">🧽 Casa e Pulizia</button>
+                <button type="button" class="category-chip active" data-category="Altro" aria-pressed="true">📦 Altro</button>
+            </div>
+
+            <div class="input-actions">
+                <button type="button" id="add-btn">Aggiungi</button>
+                <button type="button" id="delete-all-btn" class="danger-btn" title="Elimina tutto l'archivio">Elimina tutto</button>
+            </div>
+        </section>
+
+        <!-- Lista Da Comprare (raggruppata per reparto) -->
+        <div class="section-header">
+            <div class="title-with-badge">
+                <h2 class="section-title">DA COMPRARE</h2>
+                <span id="pending-count" class="badge">0</span>
+            </div>
+            <button type="button" id="clear-pending-btn" class="clear-list-btn">Pulisci lista</button>
+        </div>
+        <div id="pending-container" class="pending-container"></div>
+
+        <!-- Lista Comprati -->
+        <div class="section-header">
+            <div class="title-with-badge">
+                <h2 class="section-title">COMPRATI</h2>
+                <span id="bought-count" class="badge">0</span>
+            </div>
+            <button type="button" id="clear-bought-btn" class="clear-list-btn">Pulisci lista</button>
+        </div>
+        <ul id="bought-list" class="shopping-list"></ul>
+    </div>
+
+    <!-- Banner Installazione PWA -->
+    <div id="install-banner" class="install-banner" style="display: none;" role="region" aria-label="Installa applicazione">
+        <div class="install-banner-content">
+            <img src="icons/icon-192.png" alt="" class="install-banner-icon" width="40" height="40">
+            <div class="install-banner-text">
+                <strong>Installa Lista Spesa</strong>
+                <span id="install-banner-desc"></span>
+            </div>
+        </div>
+        <div class="install-banner-actions">
+            <button type="button" id="install-action-btn" class="install-primary-btn" style="display: none;">Installa app</button>
+            <button type="button" id="install-dismiss-btn" class="install-close-btn" aria-label="Chiudi banner">✕</button>
+        </div>
+    </div>
+
+    <!-- Pop-up Modale per Avvisi e Conferme -->
+    <div id="custom-modal" class="modal-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="modal-message">
+        <div class="modal-content">
+            <p id="modal-message"></p>
+            <div class="modal-buttons">
+                <button type="button" id="modal-cancel" class="modal-btn secondary">Annulla</button>
+                <button type="button" id="modal-confirm" class="modal-btn primary">Conferma</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
