@@ -22,12 +22,12 @@ const STORAGE_ITEMS_KEY = 'lista_spesa_items_v1';
 const STORAGE_FAVS_KEY = 'lista_spesa_favorites_v1';
 
 const CATEGORIES = [
-    { id: 'Ortofrutta', label: '🥬 Ortofrutta' },
-    { id: 'Frigo e Latticini', label: '🧀 Frigo e Latticini' },
-    { id: 'Dispensa', label: '🍝 Dispensa' },
-    { id: 'Carne e Pesce', label: '🥩 Carne e Pesce' },
-    { id: 'Casa e Pulizia', label: '🧽 Casa e Pulizia' },
-    { id: 'Altro', label: '📦 Altro' }
+    { id: 'Ortofrutta', label: 'Ortofrutta', icon: 'apple' },
+    { id: 'Frigo e Latticini', label: 'Frigo e Latticini', icon: 'snowflake' },
+    { id: 'Dispensa', label: 'Dispensa', icon: 'package' },
+    { id: 'Carne e Pesce', label: 'Carne e Pesce', icon: 'fish' },
+    { id: 'Casa e Pulizia', label: 'Casa e Pulizia', icon: 'home' },
+    { id: 'Altro', label: 'Altro', icon: 'layers' }
 ];
 const CATEGORY_IDS = CATEGORIES.map((c) => c.id);
 
@@ -72,8 +72,8 @@ const categoryChips = document.getElementById('category-chips');
 const favoritesBar = document.getElementById('favorites-bar');
 const addFavoriteBtn = document.getElementById('add-favorite-btn');
 const syncStatusEl = document.getElementById('sync-status');
+const syncDotEl = document.getElementById('sync-dot');
 const themeToggleBtn = document.getElementById('theme-toggle-btn');
-const themeIcon = document.getElementById('theme-icon');
 const themeColorMeta = document.getElementById('theme-color-meta');
 const wakeLockBtn = document.getElementById('wake-lock-btn');
 
@@ -82,6 +82,18 @@ const modal = document.getElementById('custom-modal');
 const modalMessage = document.getElementById('modal-message');
 const modalConfirm = document.getElementById('modal-confirm');
 const modalCancel = document.getElementById('modal-cancel');
+
+function refreshIcons() {
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+}
+
+function createLucideIcon(name) {
+    const i = document.createElement('i');
+    i.setAttribute('data-lucide', name);
+    return i;
+}
 
 function loadLocalJSON(key, fallback) {
     try {
@@ -137,17 +149,18 @@ function showInfoModal(message) {
     };
 }
 
-// ---------- Tema Chiaro (default originale) / Scuro ----------
+// ---------- Tema Chiaro / Scuro ----------
 function applyTheme(theme) {
     if (theme === 'dark') {
         document.documentElement.setAttribute('data-theme', 'dark');
-        themeIcon.textContent = '☀️';
-        if (themeColorMeta) themeColorMeta.setAttribute('content', '#1c221e');
+        themeToggleBtn.innerHTML = '<i data-lucide="sun" id="theme-icon"></i>';
+        if (themeColorMeta) themeColorMeta.setAttribute('content', '#121212');
     } else {
         document.documentElement.setAttribute('data-theme', 'light');
-        themeIcon.textContent = '🌙';
-        if (themeColorMeta) themeColorMeta.setAttribute('content', '#235c3f');
+        themeToggleBtn.innerHTML = '<i data-lucide="moon" id="theme-icon"></i>';
+        if (themeColorMeta) themeColorMeta.setAttribute('content', '#1f6f4a');
     }
+    refreshIcons();
 }
 
 applyTheme(localStorage.getItem('theme') === 'dark' ? 'dark' : 'light');
@@ -251,7 +264,7 @@ function resetInputs() {
     itemQtySpan.textContent = currentQty;
 }
 
-// ---------- Operazioni su Prodotti (immediate + sync Firebase) ----------
+// ---------- Operazioni su Prodotti ----------
 function persistAndRenderItems() {
     saveLocalJSON(STORAGE_ITEMS_KEY, latestItems);
     renderItems(latestItems);
@@ -334,7 +347,6 @@ function deleteItem(id) {
     }
 }
 
-// Pulsanti di pulizia con conferme
 clearPendingBtn.addEventListener('click', () => {
     showModal('Sei sicuro di voler pulire la lista degli oggetti da comprare?', () => {
         for (const id in latestItems) {
@@ -386,17 +398,17 @@ function renderFavorites(data) {
         chip.className = 'fav-chip';
         chip.setAttribute('role', 'listitem');
 
-        const labelBtn = document.createElement('span');
-        labelBtn.textContent = `+ ${fav.name}`;
+        const labelSpan = document.createElement('span');
+        labelSpan.textContent = fav.name;
 
         const removeBtn = document.createElement('button');
         removeBtn.type = 'button';
         removeBtn.className = 'fav-chip-remove';
-        removeBtn.textContent = '×';
+        removeBtn.appendChild(createLucideIcon('x'));
         removeBtn.setAttribute('aria-label', `Rimuovi ${fav.name} dai preferiti`);
 
         chip.addEventListener('click', (e) => {
-            if (e.target === removeBtn) return;
+            if (e.target.closest('.fav-chip-remove')) return;
             addFavoriteToShoppingList(fav);
         });
 
@@ -412,10 +424,12 @@ function renderFavorites(data) {
             });
         });
 
-        chip.appendChild(labelBtn);
+        chip.appendChild(labelSpan);
         chip.appendChild(removeBtn);
         favoritesBar.appendChild(chip);
     });
+
+    refreshIcons();
 }
 
 function addFavoriteToShoppingList(fav) {
@@ -511,7 +525,7 @@ function createItemElement(id, item) {
     const checkCircle = document.createElement('span');
     checkCircle.className = 'check-circle';
     checkCircle.setAttribute('aria-hidden', 'true');
-    checkCircle.textContent = isBought ? '✓' : '';
+    checkCircle.appendChild(createLucideIcon('check'));
 
     const textGroup = document.createElement('div');
     textGroup.className = 'item-text-group';
@@ -540,7 +554,7 @@ function createItemElement(id, item) {
     const minusBtn = document.createElement('button');
     minusBtn.type = 'button';
     minusBtn.className = 'qty-btn';
-    minusBtn.textContent = '−';
+    minusBtn.appendChild(createLucideIcon('minus'));
     minusBtn.setAttribute('aria-label', `Diminuisci quantità di ${item.name}`);
     minusBtn.addEventListener('click', () => updateQty(id, qty, -1));
 
@@ -551,7 +565,7 @@ function createItemElement(id, item) {
     const plusBtn = document.createElement('button');
     plusBtn.type = 'button';
     plusBtn.className = 'qty-btn';
-    plusBtn.textContent = '+';
+    plusBtn.appendChild(createLucideIcon('plus'));
     plusBtn.setAttribute('aria-label', `Aumenta quantità di ${item.name}`);
     plusBtn.addEventListener('click', () => updateQty(id, qty, 1));
 
@@ -562,7 +576,7 @@ function createItemElement(id, item) {
     const delBtn = document.createElement('button');
     delBtn.type = 'button';
     delBtn.className = 'delete-item-btn';
-    delBtn.textContent = '✕';
+    delBtn.appendChild(createLucideIcon('x'));
     delBtn.setAttribute('aria-label', `Elimina ${item.name}`);
     delBtn.addEventListener('click', () => deleteItem(id));
 
@@ -615,11 +629,18 @@ function renderItems(data) {
 
             const groupHeader = document.createElement('div');
             groupHeader.className = 'category-group-header';
-            const titleSpan = document.createElement('span');
-            titleSpan.textContent = cat.label;
+
+            const titleWrap = document.createElement('span');
+            titleWrap.className = 'category-group-title';
+            titleWrap.appendChild(createLucideIcon(cat.icon));
+            const titleText = document.createElement('span');
+            titleText.textContent = cat.label;
+            titleWrap.appendChild(titleText);
+
             const countSpan = document.createElement('span');
             countSpan.textContent = `${entries.length}`;
-            groupHeader.appendChild(titleSpan);
+
+            groupHeader.appendChild(titleWrap);
             groupHeader.appendChild(countSpan);
 
             const ul = document.createElement('ul');
@@ -636,34 +657,42 @@ function renderItems(data) {
 
     pendingCount.textContent = pCount;
     boughtCount.textContent = bCount;
+    refreshIcons();
 }
 
-// Render iniziale immediato da localStorage
+// Render iniziale immediato
 renderItems(latestItems);
 renderFavorites(latestFavorites);
 
 // Sincronizzazione Firebase Realtime Database
+function setSyncState(online, message) {
+    syncStatusEl.textContent = message;
+    if (syncDotEl) {
+        syncDotEl.classList.toggle('online', online);
+    }
+}
+
 if (db && itemsRef && favoritesRef) {
     db.ref('.info/connected').on('value', (snap) => {
         firebaseConnected = Boolean(snap.val());
         if (firebaseConnected) {
-            syncStatusEl.textContent = 'Sincronizzato in tempo reale';
+            setSyncState(true, 'Sincronizzato in tempo reale');
         }
     });
 
     setTimeout(() => {
         if (!firebaseConnected) {
-            syncStatusEl.textContent = 'Modalità locale (database offline)';
+            setSyncState(false, 'Modalità locale (database offline)');
         }
     }, 3000);
 
     itemsRef.on('value', (snapshot) => {
         firebaseConnected = true;
-        syncStatusEl.textContent = 'Sincronizzato in tempo reale';
+        setSyncState(true, 'Sincronizzato in tempo reale');
         latestItems = snapshot.val() || {};
         persistAndRenderItems();
     }, () => {
-        syncStatusEl.textContent = 'Modalità locale (database non raggiungibile)';
+        setSyncState(false, 'Modalità locale (database non raggiungibile)');
     });
 
     favoritesRef.on('value', (snapshot) => {
@@ -680,7 +709,7 @@ if (db && itemsRef && favoritesRef) {
         // Mantiene i preferiti locali in caso di errore Firebase
     });
 } else {
-    syncStatusEl.textContent = 'Modalità locale';
+    setSyncState(false, 'Modalità locale');
 }
 
 // ---------- Banner Installazione PWA (Android & iOS) ----------
@@ -739,6 +768,7 @@ window.addEventListener('appinstalled', () => {
 });
 
 showInstallBannerIfNeeded();
+refreshIcons();
 
 // ---------- Registrazione Service Worker ----------
 if ('serviceWorker' in navigator) {
