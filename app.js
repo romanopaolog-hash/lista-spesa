@@ -20,7 +20,6 @@ const DEFAULT_FAVORITES = {
 };
 
 let currentQty = 1;
-let selectedCategory = 'Altro';
 let latestItems = {};
 let latestFavorites = {};
 
@@ -42,7 +41,7 @@ const pendingContainer = document.getElementById('pending-container');
 const boughtList = document.getElementById('bought-list');
 const pendingCount = document.getElementById('pending-count');
 const boughtCount = document.getElementById('bought-count');
-const categoryChips = document.getElementById('category-chips');
+const categorySelect = document.getElementById('category-select');
 const favoritesBar = document.getElementById('favorites-bar');
 const addFavoriteBtn = document.getElementById('add-favorite-btn');
 const syncStatusEl = document.getElementById('sync-status');
@@ -185,16 +184,10 @@ document.addEventListener('visibilitychange', async () => {
 });
 
 // ---------- Selettore Reparti & Quantità ----------
-categoryChips.addEventListener('click', (e) => {
-    const btn = e.target.closest('.category-chip');
-    if (!btn) return;
-    selectedCategory = btn.dataset.category || 'Altro';
-    categoryChips.querySelectorAll('.category-chip').forEach((chip) => {
-        const isActive = chip === btn;
-        chip.classList.toggle('active', isActive);
-        chip.setAttribute('aria-pressed', String(isActive));
-    });
-});
+for (const category of CATEGORIES) {
+    categorySelect.add(new Option(category.label, category.id));
+}
+categorySelect.value = 'Altro';
 
 increaseQtyBtn.addEventListener('click', () => {
     currentQty++;
@@ -241,7 +234,7 @@ function addItem() {
         name: name,
         quantity: currentQty,
         bought: false,
-        category: selectedCategory
+        category: categorySelect.value
     };
     if (note) {
         payload.note = note;
@@ -391,7 +384,7 @@ addFavoriteBtn.addEventListener('click', () => {
     const note = noteInput.value.trim();
     const favPayload = {
         name: name,
-        category: selectedCategory
+        category: categorySelect.value
     };
     if (note) favPayload.note = note;
 

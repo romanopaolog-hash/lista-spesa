@@ -280,13 +280,9 @@
                 <i data-lucide="sticky-note" class="note-leading-icon" aria-hidden="true"></i>
                 <input type="text" id="note-input" maxlength="500" placeholder="Nota opzionale (es. 500g, bio)" autocomplete="off">
             </div>
-            <div id="category-chips" class="category-chips" role="radiogroup" aria-label="Seleziona reparto">
-                <button type="button" class="category-chip" data-category="Ortofrutta" aria-pressed="false"><i data-lucide="apple"></i><span>Ortofrutta</span></button>
-                <button type="button" class="category-chip" data-category="Frigo e Latticini" aria-pressed="false"><i data-lucide="snowflake"></i><span>Frigo</span></button>
-                <button type="button" class="category-chip" data-category="Dispensa" aria-pressed="false"><i data-lucide="package"></i><span>Dispensa</span></button>
-                <button type="button" class="category-chip" data-category="Carne e Pesce" aria-pressed="false"><i data-lucide="fish"></i><span>Carne/Pesce</span></button>
-                <button type="button" class="category-chip" data-category="Casa e Pulizia" aria-pressed="false"><i data-lucide="home"></i><span>Casa</span></button>
-                <button type="button" class="category-chip active" data-category="Altro" aria-pressed="true"><i data-lucide="layers"></i><span>Altro</span></button>
+            <div class="category-field">
+                <label for="category-select">Reparto</label>
+                <select id="category-select"></select>
             </div>
             <div class="input-actions">
                 <button type="button" id="add-btn"><i data-lucide="plus"></i><span>Aggiungi</span></button>
