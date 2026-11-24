@@ -1,0 +1,102 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && (!data.exists() || !root.child('families').child(data.val()).child('people').child($uid).exists() || (!newData.exists() && !newData.parent().parent().child('families').child(data.val()).child('people').child($uid).exists()))",
+        ".validate": "newData.isString() && newData.val().matches(/^[A-Z2-9]{8}$/) && newData.parent().parent().child('families').child(newData.val()).child('people').child($uid).exists()"
+      }
+    },
+    "families": {
+      "$code": {
+        ".write": "auth != null && ((!data.exists() && newData.child('owner').val() === auth.uid && !root.child('users').child(auth.uid).exists()) || (!newData.exists() && root.child('families').child($code).child('owner').val() === auth.uid))",
+        ".validate": "$code.matches(/^[A-Z2-9]{8}$/) && newData.hasChildren(['name','owner','people']) && newData.child('people').child(newData.child('owner').val()).child('status').val() === 'approved'",
+        "name": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80",
+          ".read": "auth != null && root.child('users').child(auth.uid).val() === $code && root.child('families').child($code).child('people').child(auth.uid).exists()"
+        },
+        "owner": {
+          ".read": "auth != null && root.child('users').child(auth.uid).val() === $code && root.child('families').child($code).child('people').child(auth.uid).child('status').val() === 'approved'",
+          ".validate": "newData.isString() && (!data.exists() || newData.val() === data.val())"
+        },
+        "people": {
+          ".indexOn": [
+            "status"
+          ],
+          ".read": "(auth != null && root.child('users').child(auth.uid).val() === $code && root.child('families').child($code).child('people').child(auth.uid).child('status').val() === 'approved') && query.orderByChild === 'status' && (query.equalTo === 'approved' || (root.child('families').child($code).child('owner').val() === auth.uid && query.equalTo === 'pending'))",
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && root.child('families').child($code).exists() && ((auth.uid === $uid && !data.exists() && newData.child('status').val() === 'pending') || (data.child('status').val() === 'pending' && root.child('families').child($code).child('owner').val() === auth.uid) || (auth.uid === $uid && !newData.exists() && !(root.child('families').child($code).child('owner').val() === auth.uid)))",
+            ".validate": "newData.hasChildren(['name','status']) && newData.parent().parent().parent().parent().child('users').child($uid).val() === $code && (newData.child('status').val() === 'pending' || (newData.child('status').val() === 'approved' && newData.parent().parent().child('owner').val() === auth.uid && (data.child('status').val() === 'pending' || $uid === auth.uid)))",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+            },
+            "status": {
+              ".validate": "newData.isString()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "items": {
+          ".read": "auth != null && root.child('users').child(auth.uid).val() === $code && root.child('families').child($code).child('people').child(auth.uid).child('status').val() === 'approved'",
+          ".write": "auth != null && root.child('users').child(auth.uid).val() === $code && root.child('families').child($code).child('people').child(auth.uid).child('status').val() === 'approved'",
+          "$id": {
+            ".validate": "newData.hasChildren(['name','category','quantity','bought'])",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 160"
+            },
+            "category": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+            },
+            "note": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500"
+            },
+            "$other": {
+              ".validate": false
+            },
+            "quantity": {
+              ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() % 1 === 0"
+            },
+            "bought": {
+              ".validate": "newData.isBoolean()"
+            }
+          }
+        },
+        "favorites": {
+          ".read": "auth != null && root.child('users').child(auth.uid).val() === $code && root.child('families').child($code).child('people').child(auth.uid).child('status').val() === 'approved'",
+          ".write": "auth != null && root.child('users').child(auth.uid).val() === $code && root.child('families').child($code).child('people').child(auth.uid).child('status').val() === 'approved'",
+          "$id": {
+            ".validate": "newData.hasChildren(['name','category'])",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 160"
+            },
+            "category": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+            },
+            "note": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "devices": {
+      "$uid": {
+        "$device": {
+          ".write": "auth != null && auth.uid === $uid && (!newData.exists() || (root.child('users').child($uid).isString() && root.child('families').child(root.child('users').child($uid).val()).child('owner').val() === $uid))",
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 4096"
+        }
+      }
+    }
+  }
+}

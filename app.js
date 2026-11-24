@@ -1,25 +1,4 @@
-// Configurazione Firebase Realtime Database
-const firebaseConfig = {
-    databaseURL: "https://listaspesafamiglia-default-rtdb.europe-west1.firebasedatabase.app"
-};
-
-let db = null;
-let itemsRef = null;
-let favoritesRef = null;
-
-try {
-    if (typeof firebase !== 'undefined') {
-        firebase.initializeApp(firebaseConfig);
-        db = firebase.database();
-        itemsRef = db.ref('items');
-        favoritesRef = db.ref('favorites');
-    }
-} catch (err) {
-    console.warn('Firebase init error:', err);
-}
-
-const STORAGE_ITEMS_KEY = 'lista_spesa_items_v1';
-const STORAGE_FAVS_KEY = 'lista_spesa_favorites_v1';
+let db, itemsRef, favoritesRef;
 
 const CATEGORIES = [
     { id: 'Ortofrutta', label: 'Ortofrutta', icon: 'apple' },
@@ -42,17 +21,12 @@ const DEFAULT_FAVORITES = {
 
 let currentQty = 1;
 let selectedCategory = 'Altro';
-let latestItems = loadLocalJSON(STORAGE_ITEMS_KEY, {});
-let latestFavorites = loadLocalJSON(STORAGE_FAVS_KEY, null);
-let firebaseConnected = false;
+let latestItems = {};
+let latestFavorites = {};
+
 let wakeLockSentinel = null;
 let wakeLockEnabled = false;
 let deferredInstallPrompt = null;
-
-if (latestFavorites === null) {
-    latestFavorites = { ...DEFAULT_FAVORITES };
-    saveLocalJSON(STORAGE_FAVS_KEY, latestFavorites);
-}
 
 // Elementi DOM
 const itemInput = document.getElementById('item-input');
@@ -95,25 +69,8 @@ function createLucideIcon(name) {
     return i;
 }
 
-function loadLocalJSON(key, fallback) {
-    try {
-        const raw = localStorage.getItem(key);
-        return raw ? JSON.parse(raw) : fallback;
-    } catch {
-        return fallback;
-    }
-}
-
-function saveLocalJSON(key, value) {
-    try {
-        localStorage.setItem(key, JSON.stringify(value));
-    } catch {
-        // Ignora errori di quota localStorage
-    }
-}
-
-function generateLocalId(prefix = 'id') {
-    return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+function shoppingError() {
+    showInfoModal("Modifica non salvata. Controlla la connessione e riprova.");
 }
 
 function showModal(message, onConfirm) {
@@ -265,10 +222,6 @@ function resetInputs() {
 }
 
 // ---------- Operazioni su Prodotti ----------
-function persistAndRenderItems() {
-    saveLocalJSON(STORAGE_ITEMS_KEY, latestItems);
-    renderItems(latestItems);
-}
 
 function addItem() {
     const name = formatItemName(itemInput.value);
@@ -294,16 +247,8 @@ function addItem() {
         payload.note = note;
     }
 
-    if (itemsRef && firebaseConnected) {
-        itemsRef.push(payload);
-    } else {
-        const localId = generateLocalId('item');
-        latestItems[localId] = payload;
-        persistAndRenderItems();
-        if (itemsRef) {
-            itemsRef.child(localId).set(payload).catch(() => {});
-        }
-    }
+    if (!itemsRef) return;
+    itemsRef.push(payload).catch(shoppingError);
 
     resetInputs();
 }
@@ -317,67 +262,36 @@ addBtn.addEventListener('click', addItem);
 });
 
 function toggleBought(id, currentStatus) {
-    if (!latestItems[id]) return;
-    latestItems[id].bought = !currentStatus;
-    persistAndRenderItems();
-    if (itemsRef) {
-        itemsRef.child(id).update({ bought: !currentStatus }).catch(() => {});
-    }
+    itemsRef?.child(id).update({ bought: !currentStatus }).catch(shoppingError);
 }
 
-function updateQty(id, currentQtyVal, delta) {
-    if (!latestItems[id]) return;
-    const newQty = currentQtyVal + delta;
-    if (newQty > 0) {
-        latestItems[id].quantity = newQty;
-        persistAndRenderItems();
-        if (itemsRef) {
-            itemsRef.child(id).update({ quantity: newQty }).catch(() => {});
-        }
-    } else {
-        deleteItem(id);
-    }
+function updateQty(id, delta) {
+    itemsRef?.child(id).transaction(item => {
+        if (!item) return;
+        const quantity = item.quantity + delta;
+        return quantity > 0 ? { ...item, quantity } : null;
+    }).catch(shoppingError);
 }
 
 function deleteItem(id) {
-    delete latestItems[id];
-    persistAndRenderItems();
-    if (itemsRef) {
-        itemsRef.child(id).remove().catch(() => {});
-    }
+    itemsRef?.child(id).remove().catch(shoppingError);
 }
 
-clearPendingBtn.addEventListener('click', () => {
-    showModal('Sei sicuro di voler pulire la lista degli oggetti da comprare?', () => {
-        for (const id in latestItems) {
-            if (!latestItems[id].bought) {
-                delete latestItems[id];
-                if (itemsRef) itemsRef.child(id).remove().catch(() => {});
-            }
+function clearItems(message, matches) {
+    const ref = itemsRef;
+    showModal(message, () => {
+        if (!ref || ref !== itemsRef) return;
+        const changes = {};
+        for (const [id, item] of Object.entries(latestItems)) {
+            if (matches(item)) changes[id] = null;
         }
-        persistAndRenderItems();
+        ref.update(changes).catch(shoppingError);
     });
-});
+}
 
-clearBoughtBtn.addEventListener('click', () => {
-    showModal('Sei sicuro di voler rimuovere tutti i prodotti già comprati?', () => {
-        for (const id in latestItems) {
-            if (latestItems[id].bought) {
-                delete latestItems[id];
-                if (itemsRef) itemsRef.child(id).remove().catch(() => {});
-            }
-        }
-        persistAndRenderItems();
-    });
-});
-
-deleteAllBtn.addEventListener('click', () => {
-    showModal("Sei sicuro di voler eliminare tutto l'archivio della spesa?", () => {
-        latestItems = {};
-        persistAndRenderItems();
-        if (itemsRef) itemsRef.remove().catch(() => {});
-    });
-});
+clearPendingBtn.onclick = () => clearItems('Eliminare i prodotti da comprare?', item => !item.bought);
+clearBoughtBtn.onclick = () => clearItems('Eliminare i prodotti già comprati?', item => item.bought);
+deleteAllBtn.onclick = () => clearItems('Eliminare tutti i prodotti della lista?', () => true);
 
 // ---------- Preferiti / Acquisti Frequenti ----------
 function renderFavorites(data) {
@@ -415,12 +329,8 @@ function renderFavorites(data) {
         removeBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             showModal(`Rimuovere “${fav.name}” dagli acquisti frequenti?`, () => {
-                delete latestFavorites[favId];
-                saveLocalJSON(STORAGE_FAVS_KEY, latestFavorites);
-                renderFavorites(latestFavorites);
-                if (favoritesRef) {
-                    favoritesRef.child(favId).remove().catch(() => {});
-                }
+                favoritesRef?.child(favId).remove().catch(shoppingError);
+
             });
         });
 
@@ -445,20 +355,10 @@ function addFavoriteToShoppingList(fav) {
     }
 
     if (existingId) {
-        const existingItem = latestItems[existingId];
-        if (existingItem.bought) {
-            existingItem.bought = false;
-            existingItem.quantity = 1;
-        } else {
-            existingItem.quantity = (Number(existingItem.quantity) || 1) + 1;
-        }
-        persistAndRenderItems();
-        if (itemsRef) {
-            itemsRef.child(existingId).update({
-                bought: existingItem.bought,
-                quantity: existingItem.quantity
-            }).catch(() => {});
-        }
+        itemsRef?.child(existingId).transaction(item => item ? {
+            ...item, bought: false, quantity: item.bought ? 1 : item.quantity + 1
+        } : undefined).catch(shoppingError);
+
     } else {
         const payload = {
             name: formatItemName(fav.name),
@@ -468,12 +368,8 @@ function addFavoriteToShoppingList(fav) {
         };
         if (fav.note) payload.note = fav.note;
 
-        const id = generateLocalId('item');
-        latestItems[id] = payload;
-        persistAndRenderItems();
-        if (itemsRef) {
-            itemsRef.child(id).set(payload).catch(() => {});
-        }
+        itemsRef?.push(payload).catch(shoppingError);
+
     }
 }
 
@@ -499,14 +395,8 @@ addFavoriteBtn.addEventListener('click', () => {
     };
     if (note) favPayload.note = note;
 
-    const favId = generateLocalId('fav');
-    latestFavorites[favId] = favPayload;
-    saveLocalJSON(STORAGE_FAVS_KEY, latestFavorites);
-    renderFavorites(latestFavorites);
-    if (favoritesRef) {
-        favoritesRef.child(favId).set(favPayload).catch(() => {});
-    }
-    showInfoModal(`“${name}” aggiunto agli acquisti frequenti!`);
+    favoritesRef?.push(favPayload).catch(shoppingError);
+
 });
 
 // ---------- Rendering Lista Prodotti ----------
@@ -556,7 +446,7 @@ function createItemElement(id, item) {
     minusBtn.className = 'qty-btn';
     minusBtn.appendChild(createLucideIcon('minus'));
     minusBtn.setAttribute('aria-label', `Diminuisci quantità di ${item.name}`);
-    minusBtn.addEventListener('click', () => updateQty(id, qty, -1));
+    minusBtn.addEventListener('click', () => updateQty(id, -1));
 
     const qtyVal = document.createElement('span');
     qtyVal.className = 'qty-value';
@@ -567,7 +457,7 @@ function createItemElement(id, item) {
     plusBtn.className = 'qty-btn';
     plusBtn.appendChild(createLucideIcon('plus'));
     plusBtn.setAttribute('aria-label', `Aumenta quantità di ${item.name}`);
-    plusBtn.addEventListener('click', () => updateQty(id, qty, 1));
+    plusBtn.addEventListener('click', () => updateQty(id, 1));
 
     qtyPill.appendChild(minusBtn);
     qtyPill.appendChild(qtyVal);
@@ -670,46 +560,6 @@ function setSyncState(online, message) {
     if (syncDotEl) {
         syncDotEl.classList.toggle('online', online);
     }
-}
-
-if (db && itemsRef && favoritesRef) {
-    db.ref('.info/connected').on('value', (snap) => {
-        firebaseConnected = Boolean(snap.val());
-        if (firebaseConnected) {
-            setSyncState(true, 'Sincronizzato in tempo reale');
-        }
-    });
-
-    setTimeout(() => {
-        if (!firebaseConnected) {
-            setSyncState(false, 'Modalità locale (database offline)');
-        }
-    }, 3000);
-
-    itemsRef.on('value', (snapshot) => {
-        firebaseConnected = true;
-        setSyncState(true, 'Sincronizzato in tempo reale');
-        latestItems = snapshot.val() || {};
-        persistAndRenderItems();
-    }, () => {
-        setSyncState(false, 'Modalità locale (database non raggiungibile)');
-    });
-
-    favoritesRef.on('value', (snapshot) => {
-        if (!snapshot.exists() && localStorage.getItem('favoritesSeeded') !== '1') {
-            localStorage.setItem('favoritesSeeded', '1');
-            favoritesRef.set(DEFAULT_FAVORITES).catch(() => {});
-            latestFavorites = { ...DEFAULT_FAVORITES };
-        } else {
-            latestFavorites = snapshot.val() || {};
-        }
-        saveLocalJSON(STORAGE_FAVS_KEY, latestFavorites);
-        renderFavorites(latestFavorites);
-    }, () => {
-        // Mantiene i preferiti locali in caso di errore Firebase
-    });
-} else {
-    setSyncState(false, 'Modalità locale');
 }
 
 // ---------- Banner Installazione PWA (Android & iOS) ----------

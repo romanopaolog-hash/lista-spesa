@@ -1,0 +1,9 @@
+{
+  "database": {
+    "instance": "lista-della-spesa-1a23c-default-rtdb",
+    "rules": "firebase-rules.json"
+  },
+  "functions": {
+    "source": "functions"
+  }
+}

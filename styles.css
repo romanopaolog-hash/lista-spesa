@@ -927,3 +927,56 @@ h1 {
         justify-content: center;
     }
 }
+.screen { display: none; width: 100%; max-width: 560px; }
+.screen-active { display: block; }
+.screen-center.screen-active { display: grid; place-items: center; }
+.auth-card, .onboarding-card, .pending-card {
+    width: 100%; max-width: 430px; padding: clamp(20px, 5vw, 34px);
+    background: var(--card-bg); border: 1px solid var(--border-color);
+    border-radius: 22px; box-shadow: var(--shadow-card);
+}
+.auth-header, .onboarding-header, .pending-card, .onboarding-divider { text-align: center; }
+.brand-icon-medium, .brand-icon-large { margin: auto; }
+.auth-title, .onboarding-title, .pending-title { margin: 14px 0 6px; }
+.auth-subtitle, .onboarding-subtitle, .pending-desc, .pending-hint, .label-hint {
+    color: var(--text-muted); line-height: 1.5;
+}
+.auth-tabs { display: flex; padding: 4px; margin: 22px 0; background: var(--surface-bg); border-radius: 12px; }
+.auth-tab, .auth-form button, .pending-card button, .onboarding-card button, .members-drawer button {
+    font: inherit; cursor: pointer;
+}
+.auth-tab, .text-muted-btn, .toggle-pwd-btn, .copy-btn {
+    border: 0; color: var(--text-color); background: transparent; padding: 9px;
+}
+.auth-tab { flex: 1; border-radius: 9px; }
+.auth-tab.active { background: var(--card-bg); color: var(--primary-color); box-shadow: var(--shadow-card); }
+.auth-form, .field-group { display: grid; gap: 8px; }
+.auth-form { gap: 16px; }
+.field-group label { font-size: .9rem; font-weight: 600; }
+.input-icon-wrap, .invite-code-row, .drawer-header, .members-list li { display: flex; align-items: center; gap: 10px; }
+.input-icon-wrap { padding: 0 10px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--surface-bg); }
+.input-icon-wrap:focus-within { outline: 2px solid var(--primary-color); }
+.input-icon-wrap input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; font: inherit; color: inherit; padding: 12px 0; }
+.btn-full { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; border-radius: 10px; }
+.btn-primary, .btn-secondary { border: 0; background: var(--primary-color); color: var(--card-bg); }
+.btn-secondary { background: var(--primary-soft); color: var(--text-color); }
+.btn-danger-outline { background: var(--danger-light); color: var(--danger-color); border: 1px solid var(--danger-border); }
+.auth-error { color: var(--danger-color); }
+.onboarding-divider, .pending-hint { margin: 18px 0; }
+.onboarding-block-title, .drawer-title { display: flex; align-items: center; gap: 7px; }
+.drawer-overlay { position: fixed; inset: 0; background: #0006; z-index: 89; }
+.members-drawer { position: fixed; inset: 0 0 0 auto; width: min(380px, 94vw); padding: 22px; overflow-y: auto; background: var(--card-bg); z-index: 90; }
+.members-drawer[aria-hidden="true"] { display: none; }
+.drawer-header, .invite-code-row { justify-content: space-between; }
+.drawer-section { padding: 16px 0; border-top: 1px solid var(--border-color); }
+.drawer-family-name { font-size: 1.2rem; font-weight: 700; margin-bottom: 12px; }
+.invite-code-block { display: grid; gap: 6px; }
+.invite-code-value { font-family: monospace; font-size: 1.3rem; letter-spacing: 2px; }
+.members-list { list-style: none; padding: 0; }
+.members-list li { margin: 8px 0; }
+.members-list span { flex: 1; overflow-wrap: anywhere; }
+.members-list button { border: 1px solid var(--border-color); background: var(--surface-bg); color: inherit; padding: 8px; border-radius: 8px; }
+#members-btn { position: relative; }
+#members-btn[data-count]::after { content: attr(data-count); position: absolute; right: -4px; top: -5px; background: var(--primary-color); color: var(--card-bg); border-radius: 10px; font-size: 11px; padding: 1px 4px; }
+.spinner { margin: 16px auto; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border-color); border-top-color: var(--primary-color); animation: loading-spin 1s linear infinite; }
+@keyframes loading-spin { to { transform: rotate(360deg); } }
