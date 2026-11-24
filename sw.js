@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lista-spesa-v2';
+const CACHE_NAME = 'lista-spesa-v3';
 
 const STATIC_ASSETS = [
     './',

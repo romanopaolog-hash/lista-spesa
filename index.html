@@ -3,19 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Lista della Spesa</title>
+    <title>La nostra spesa</title>
 
     <!-- PWA & Theme -->
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#2e7d32" id="theme-color-meta">
+    <meta name="theme-color" content="#235c3f" id="theme-color-meta">
     <meta name="description" content="Lista della spesa familiare condivisa in tempo reale">
 
     <!-- iOS / Safari PWA -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Lista Spesa">
+    <meta name="apple-mobile-web-app-title" content="La nostra spesa">
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+
+    <!-- Font editoriali (con fallback di sistema) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="styles.css">
 
@@ -24,36 +29,29 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 </head>
 <body>
-    <div class="container">
-        <!-- Header App -->
+    <main class="container">
+        <!-- Header Editoriale -->
         <header class="app-header">
-            <h1>Lista della Spesa Familiare</h1>
-            <div class="header-controls">
-                <button type="button" id="wake-lock-btn" class="icon-pill-btn" aria-pressed="false" title="Mantieni schermo attivo durante la spesa">
-                    <span class="btn-icon" aria-hidden="true">💡</span>
-                    <span class="btn-label">Schermo attivo</span>
-                </button>
-                <button type="button" id="theme-toggle-btn" class="icon-btn" aria-label="Cambia tema chiaro/scuro" title="Cambia tema">
-                    <span id="theme-icon" aria-hidden="true">🌙</span>
-                </button>
+            <div class="header-top-row">
+                <span class="eyebrow">LISTA CONDIVISA</span>
+                <div class="header-controls">
+                    <button type="button" id="wake-lock-btn" class="icon-pill-btn" aria-pressed="false" title="Mantieni schermo attivo durante la spesa">
+                        <span class="btn-icon" aria-hidden="true">💡</span>
+                        <span class="btn-label">Schermo attivo</span>
+                    </button>
+                    <button type="button" id="theme-toggle-btn" class="icon-btn" aria-label="Cambia tema chiaro/scuro" title="Cambia tema">
+                        <span id="theme-icon" aria-hidden="true">🌙</span>
+                    </button>
+                </div>
             </div>
+            <h1>La nostra spesa</h1>
+            <p class="app-subtitle">Tutti gli aggiornamenti appaiono subito per chi è collegato.</p>
         </header>
-
-        <!-- Barra Preferiti / Acquisti Frequenti -->
-        <section class="favorites-section" aria-label="Prodotti preferiti">
-            <div class="favorites-header">
-                <span class="favorites-title">⭐ Acquisti frequenti</span>
-                <button type="button" id="add-favorite-btn" class="text-action-btn" title="Salva il prodotto scritto sotto nei preferiti">
-                    + Salva preferito
-                </button>
-            </div>
-            <div id="favorites-bar" class="favorites-bar" role="list"></div>
-        </section>
 
         <!-- Sezione Input -->
         <section class="input-section" aria-label="Aggiungi prodotto">
             <div class="input-row-main">
-                <input type="text" id="item-input" placeholder="Aggiungi un prodotto..." autocomplete="off" enterkeyhint="done">
+                <input type="text" id="item-input" placeholder="Es. latte, pane, detersivo..." autocomplete="off" enterkeyhint="done">
                 <div class="quantity-controls" aria-label="Quantità">
                     <button type="button" id="decrease-qty" aria-label="Diminuisci quantità">−</button>
                     <span id="item-qty" aria-live="polite">1</span>
@@ -77,37 +75,46 @@
 
             <div class="input-actions">
                 <button type="button" id="add-btn">Aggiungi</button>
-                <button type="button" id="delete-all-btn" class="danger-btn" title="Elimina tutto l'archivio">Elimina tutto</button>
+                <button type="button" id="delete-all-btn" class="danger-btn">Elimina tutto</button>
             </div>
+
+            <p id="sync-status" class="sync-status">Connessione in corso...</p>
+        </section>
+
+        <!-- Barra Preferiti / Acquisti Frequenti -->
+        <section class="favorites-section" aria-label="Prodotti preferiti">
+            <div class="favorites-header">
+                <span class="favorites-title">Acquisti frequenti</span>
+                <button type="button" id="add-favorite-btn" class="text-action-btn" title="Salva il prodotto scritto sopra nei preferiti">
+                    + Salva preferito
+                </button>
+            </div>
+            <div id="favorites-bar" class="favorites-bar" role="list"></div>
         </section>
 
         <!-- Lista Da Comprare (raggruppata per reparto) -->
         <div class="section-header">
-            <div class="title-with-badge">
-                <h2 class="section-title">DA COMPRARE</h2>
-                <span id="pending-count" class="badge">0</span>
-            </div>
+            <h2 class="section-title">DA COMPRARE</h2>
             <button type="button" id="clear-pending-btn" class="clear-list-btn">Pulisci lista</button>
+            <span id="pending-count" class="badge">0</span>
         </div>
         <div id="pending-container" class="pending-container"></div>
 
         <!-- Lista Comprati -->
         <div class="section-header">
-            <div class="title-with-badge">
-                <h2 class="section-title">COMPRATI</h2>
-                <span id="bought-count" class="badge">0</span>
-            </div>
+            <h2 class="section-title">COMPRATI</h2>
             <button type="button" id="clear-bought-btn" class="clear-list-btn">Pulisci lista</button>
+            <span id="bought-count" class="badge">0</span>
         </div>
         <ul id="bought-list" class="shopping-list"></ul>
-    </div>
+    </main>
 
     <!-- Banner Installazione PWA -->
     <div id="install-banner" class="install-banner" style="display: none;" role="region" aria-label="Installa applicazione">
         <div class="install-banner-content">
-            <img src="icons/icon-192.png" alt="" class="install-banner-icon" width="40" height="40">
+            <img src="icons/icon-192.png" alt="" class="install-banner-icon" width="38" height="38">
             <div class="install-banner-text">
-                <strong>Installa Lista Spesa</strong>
+                <strong>Installa La nostra spesa</strong>
                 <span id="install-banner-desc"></span>
             </div>
         </div>

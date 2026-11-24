@@ -1,12 +1,25 @@
-// Configurazione Firebase Realtime Database (invariata)
+// Configurazione Firebase Realtime Database
 const firebaseConfig = {
     databaseURL: "https://listaspesafamiglia-default-rtdb.europe-west1.firebasedatabase.app"
 };
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-const itemsRef = db.ref('items');
-const favoritesRef = db.ref('favorites');
+let db = null;
+let itemsRef = null;
+let favoritesRef = null;
+
+try {
+    if (typeof firebase !== 'undefined') {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.database();
+        itemsRef = db.ref('items');
+        favoritesRef = db.ref('favorites');
+    }
+} catch (err) {
+    console.warn('Firebase init error:', err);
+}
+
+const STORAGE_ITEMS_KEY = 'lista_spesa_items_v1';
+const STORAGE_FAVS_KEY = 'lista_spesa_favorites_v1';
 
 const CATEGORIES = [
     { id: 'Ortofrutta', label: '🥬 Ortofrutta' },
@@ -18,21 +31,28 @@ const CATEGORIES = [
 ];
 const CATEGORY_IDS = CATEGORIES.map((c) => c.id);
 
-const DEFAULT_FAVORITES = [
-    { name: 'Pane', category: 'Dispensa' },
-    { name: 'Latte', category: 'Frigo e Latticini' },
-    { name: 'Acqua', category: 'Dispensa' },
-    { name: 'Uova', category: 'Frigo e Latticini' },
-    { name: 'Caffè', category: 'Dispensa' },
-    { name: 'Pasta', category: 'Dispensa' }
-];
+const DEFAULT_FAVORITES = {
+    fav_pane: { name: 'Pane', category: 'Dispensa' },
+    fav_latte: { name: 'Latte', category: 'Frigo e Latticini' },
+    fav_acqua: { name: 'Acqua', category: 'Dispensa' },
+    fav_uova: { name: 'Uova', category: 'Frigo e Latticini' },
+    fav_caffe: { name: 'Caffè', category: 'Dispensa' },
+    fav_pasta: { name: 'Pasta', category: 'Dispensa' }
+};
 
 let currentQty = 1;
 let selectedCategory = 'Altro';
-let latestItems = {};
+let latestItems = loadLocalJSON(STORAGE_ITEMS_KEY, {});
+let latestFavorites = loadLocalJSON(STORAGE_FAVS_KEY, null);
+let firebaseConnected = false;
 let wakeLockSentinel = null;
 let wakeLockEnabled = false;
 let deferredInstallPrompt = null;
+
+if (latestFavorites === null) {
+    latestFavorites = { ...DEFAULT_FAVORITES };
+    saveLocalJSON(STORAGE_FAVS_KEY, latestFavorites);
+}
 
 // Elementi DOM
 const itemInput = document.getElementById('item-input');
@@ -51,6 +71,7 @@ const boughtCount = document.getElementById('bought-count');
 const categoryChips = document.getElementById('category-chips');
 const favoritesBar = document.getElementById('favorites-bar');
 const addFavoriteBtn = document.getElementById('add-favorite-btn');
+const syncStatusEl = document.getElementById('sync-status');
 const themeToggleBtn = document.getElementById('theme-toggle-btn');
 const themeIcon = document.getElementById('theme-icon');
 const themeColorMeta = document.getElementById('theme-color-meta');
@@ -61,6 +82,27 @@ const modal = document.getElementById('custom-modal');
 const modalMessage = document.getElementById('modal-message');
 const modalConfirm = document.getElementById('modal-confirm');
 const modalCancel = document.getElementById('modal-cancel');
+
+function loadLocalJSON(key, fallback) {
+    try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+    } catch {
+        return fallback;
+    }
+}
+
+function saveLocalJSON(key, value) {
+    try {
+        localStorage.setItem(key, JSON.stringify(value));
+    } catch {
+        // Ignora errori di quota localStorage
+    }
+}
+
+function generateLocalId(prefix = 'id') {
+    return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
 
 function showModal(message, onConfirm) {
     modalMessage.textContent = message;
@@ -95,34 +137,24 @@ function showInfoModal(message) {
     };
 }
 
-// ---------- Tema Chiaro / Scuro ----------
-function getEffectiveTheme() {
-    const saved = localStorage.getItem('theme');
-    if (saved === 'dark' || saved === 'light') return saved;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
-
+// ---------- Tema Chiaro (default originale) / Scuro ----------
 function applyTheme(theme) {
-    if (theme === 'dark' || theme === 'light') {
-        document.documentElement.setAttribute('data-theme', theme);
-    }
-    const effective = getEffectiveTheme();
-    themeIcon.textContent = effective === 'dark' ? '☀️' : '🌙';
-    if (themeColorMeta) {
-        themeColorMeta.setAttribute('content', effective === 'dark' ? '#181e19' : '#2e7d32');
+    if (theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        themeIcon.textContent = '☀️';
+        if (themeColorMeta) themeColorMeta.setAttribute('content', '#1c221e');
+    } else {
+        document.documentElement.setAttribute('data-theme', 'light');
+        themeIcon.textContent = '🌙';
+        if (themeColorMeta) themeColorMeta.setAttribute('content', '#235c3f');
     }
 }
 
-applyTheme(localStorage.getItem('theme'));
-
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-    if (!localStorage.getItem('theme')) {
-        applyTheme(null);
-    }
-});
+applyTheme(localStorage.getItem('theme') === 'dark' ? 'dark' : 'light');
 
 themeToggleBtn.addEventListener('click', () => {
-    const next = getEffectiveTheme() === 'dark' ? 'light' : 'dark';
+    const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    const next = current === 'dark' ? 'light' : 'dark';
     localStorage.setItem('theme', next);
     applyTheme(next);
 });
@@ -145,9 +177,7 @@ async function requestWakeLock() {
     try {
         wakeLockSentinel = await navigator.wakeLock.request('screen');
         wakeLockSentinel.addEventListener('release', () => {
-            if (!wakeLockEnabled) {
-                updateWakeLockUI(false);
-            }
+            if (!wakeLockEnabled) updateWakeLockUI(false);
         });
         updateWakeLockUI(true);
         return true;
@@ -162,7 +192,7 @@ async function releaseWakeLock() {
         try {
             await wakeLockSentinel.release();
         } catch {
-            // Ignora eventuali errori di rilascio
+            // Ignora
         }
         wakeLockSentinel = null;
     }
@@ -174,8 +204,7 @@ wakeLockBtn.addEventListener('click', async () => {
         wakeLockEnabled = false;
         await releaseWakeLock();
     } else {
-        const ok = await requestWakeLock();
-        wakeLockEnabled = ok;
+        wakeLockEnabled = await requestWakeLock();
     }
 });
 
@@ -222,77 +251,131 @@ function resetInputs() {
     itemQtySpan.textContent = currentQty;
 }
 
-// ---------- Aggiunta Prodotto ----------
+// ---------- Operazioni su Prodotti (immediate + sync Firebase) ----------
+function persistAndRenderItems() {
+    saveLocalJSON(STORAGE_ITEMS_KEY, latestItems);
+    renderItems(latestItems);
+}
+
 function addItem() {
     const name = formatItemName(itemInput.value);
     const note = noteInput.value.trim();
     if (!name) return;
 
-    itemsRef.once('value', (snapshot) => {
-        const items = snapshot.val() || {};
-        let exists = false;
-
-        for (const key in items) {
-            if (items[key].name && items[key].name.toLowerCase() === name.toLowerCase()) {
-                exists = true;
-                break;
-            }
-        }
-
-        if (exists) {
-            showInfoModal(`“${name}” è già nella lista! Se vuoi puoi modificarne la quantità direttamente sotto.`);
+    for (const key in latestItems) {
+        const existing = latestItems[key];
+        if (existing && existing.name && existing.name.toLowerCase() === name.toLowerCase()) {
+            showInfoModal(`“${name}” è già nella lista! Puoi modificarne la quantità direttamente sotto.`);
             resetInputs();
-        } else {
-            const payload = {
-                name: name,
-                quantity: currentQty,
-                bought: false,
-                category: selectedCategory
-            };
-            if (note) {
-                payload.note = note;
-            }
-            itemsRef.push(payload);
-            resetInputs();
+            return;
         }
-    });
+    }
+
+    const payload = {
+        name: name,
+        quantity: currentQty,
+        bought: false,
+        category: selectedCategory
+    };
+    if (note) {
+        payload.note = note;
+    }
+
+    if (itemsRef && firebaseConnected) {
+        itemsRef.push(payload);
+    } else {
+        const localId = generateLocalId('item');
+        latestItems[localId] = payload;
+        persistAndRenderItems();
+        if (itemsRef) {
+            itemsRef.child(localId).set(payload).catch(() => {});
+        }
+    }
+
+    resetInputs();
 }
 
 addBtn.addEventListener('click', addItem);
 
 [itemInput, noteInput].forEach((input) => {
     input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            addItem();
+        if (e.key === 'Enter') addItem();
+    });
+});
+
+function toggleBought(id, currentStatus) {
+    if (!latestItems[id]) return;
+    latestItems[id].bought = !currentStatus;
+    persistAndRenderItems();
+    if (itemsRef) {
+        itemsRef.child(id).update({ bought: !currentStatus }).catch(() => {});
+    }
+}
+
+function updateQty(id, currentQtyVal, delta) {
+    if (!latestItems[id]) return;
+    const newQty = currentQtyVal + delta;
+    if (newQty > 0) {
+        latestItems[id].quantity = newQty;
+        persistAndRenderItems();
+        if (itemsRef) {
+            itemsRef.child(id).update({ quantity: newQty }).catch(() => {});
         }
+    } else {
+        deleteItem(id);
+    }
+}
+
+function deleteItem(id) {
+    delete latestItems[id];
+    persistAndRenderItems();
+    if (itemsRef) {
+        itemsRef.child(id).remove().catch(() => {});
+    }
+}
+
+// Pulsanti di pulizia con conferme
+clearPendingBtn.addEventListener('click', () => {
+    showModal('Sei sicuro di voler pulire la lista degli oggetti da comprare?', () => {
+        for (const id in latestItems) {
+            if (!latestItems[id].bought) {
+                delete latestItems[id];
+                if (itemsRef) itemsRef.child(id).remove().catch(() => {});
+            }
+        }
+        persistAndRenderItems();
+    });
+});
+
+clearBoughtBtn.addEventListener('click', () => {
+    showModal('Sei sicuro di voler rimuovere tutti i prodotti già comprati?', () => {
+        for (const id in latestItems) {
+            if (latestItems[id].bought) {
+                delete latestItems[id];
+                if (itemsRef) itemsRef.child(id).remove().catch(() => {});
+            }
+        }
+        persistAndRenderItems();
+    });
+});
+
+deleteAllBtn.addEventListener('click', () => {
+    showModal("Sei sicuro di voler eliminare tutto l'archivio della spesa?", () => {
+        latestItems = {};
+        persistAndRenderItems();
+        if (itemsRef) itemsRef.remove().catch(() => {});
     });
 });
 
 // ---------- Preferiti / Acquisti Frequenti ----------
-function seedFavoritesIfEmpty(snapshot) {
-    if (snapshot.exists() || localStorage.getItem('favoritesSeeded') === '1') {
-        return;
-    }
-    localStorage.setItem('favoritesSeeded', '1');
-    DEFAULT_FAVORITES.forEach((fav) => {
-        favoritesRef.push(fav);
-    });
-}
-
-favoritesRef.on('value', (snapshot) => {
-    if (!snapshot.exists() && localStorage.getItem('favoritesSeeded') !== '1') {
-        seedFavoritesIfEmpty(snapshot);
-        return;
-    }
-
-    const data = snapshot.val() || {};
+function renderFavorites(data) {
     favoritesBar.innerHTML = '';
+    const entries = Object.entries(data || {});
 
-    const entries = Object.entries(data);
     if (entries.length === 0) {
         const hint = document.createElement('span');
         hint.className = 'item-note';
-        hint.textContent = 'Nessun preferito salvato. Scrivi un prodotto e tocca "+ Salva preferito".';
+        hint.textContent = 'Nessun preferito salvato.';
         favoritesBar.appendChild(hint);
         return;
     }
@@ -320,7 +403,12 @@ favoritesRef.on('value', (snapshot) => {
         removeBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             showModal(`Rimuovere “${fav.name}” dagli acquisti frequenti?`, () => {
-                favoritesRef.child(favId).remove();
+                delete latestFavorites[favId];
+                saveLocalJSON(STORAGE_FAVS_KEY, latestFavorites);
+                renderFavorites(latestFavorites);
+                if (favoritesRef) {
+                    favoritesRef.child(favId).remove().catch(() => {});
+                }
             });
         });
 
@@ -328,32 +416,34 @@ favoritesRef.on('value', (snapshot) => {
         chip.appendChild(removeBtn);
         favoritesBar.appendChild(chip);
     });
-});
+}
 
 function addFavoriteToShoppingList(fav) {
     const targetName = fav.name.toLowerCase();
     let existingId = null;
-    let existingItem = null;
 
     for (const id in latestItems) {
         const item = latestItems[id];
         if (item && item.name && item.name.toLowerCase() === targetName) {
             existingId = id;
-            existingItem = item;
             break;
         }
     }
 
-    if (existingId && existingItem) {
+    if (existingId) {
+        const existingItem = latestItems[existingId];
         if (existingItem.bought) {
-            itemsRef.child(existingId).update({
-                bought: false,
-                quantity: 1
-            });
+            existingItem.bought = false;
+            existingItem.quantity = 1;
         } else {
+            existingItem.quantity = (Number(existingItem.quantity) || 1) + 1;
+        }
+        persistAndRenderItems();
+        if (itemsRef) {
             itemsRef.child(existingId).update({
-                quantity: (existingItem.quantity || 1) + 1
-            });
+                bought: existingItem.bought,
+                quantity: existingItem.quantity
+            }).catch(() => {});
         }
     } else {
         const payload = {
@@ -362,10 +452,14 @@ function addFavoriteToShoppingList(fav) {
             bought: false,
             category: CATEGORY_IDS.includes(fav.category) ? fav.category : 'Altro'
         };
-        if (fav.note) {
-            payload.note = fav.note;
+        if (fav.note) payload.note = fav.note;
+
+        const id = generateLocalId('item');
+        latestItems[id] = payload;
+        persistAndRenderItems();
+        if (itemsRef) {
+            itemsRef.child(id).set(payload).catch(() => {});
         }
-        itemsRef.push(payload);
     }
 }
 
@@ -377,26 +471,28 @@ addFavoriteBtn.addEventListener('click', () => {
         return;
     }
 
+    for (const id in latestFavorites) {
+        if (latestFavorites[id].name && latestFavorites[id].name.toLowerCase() === name.toLowerCase()) {
+            showInfoModal(`“${name}” è già nei preferiti!`);
+            return;
+        }
+    }
+
     const note = noteInput.value.trim();
-    favoritesRef.once('value', (snapshot) => {
-        const favs = snapshot.val() || {};
-        for (const id in favs) {
-            if (favs[id].name && favs[id].name.toLowerCase() === name.toLowerCase()) {
-                showInfoModal(`“${name}” è già nei preferiti!`);
-                return;
-            }
-        }
-        const favPayload = {
-            name: name,
-            category: selectedCategory
-        };
-        if (note) {
-            favPayload.note = note;
-        }
-        favoritesRef.push(favPayload);
-        localStorage.setItem('favoritesSeeded', '1');
-        showInfoModal(`“${name}” aggiunto agli acquisti frequenti!`);
-    });
+    const favPayload = {
+        name: name,
+        category: selectedCategory
+    };
+    if (note) favPayload.note = note;
+
+    const favId = generateLocalId('fav');
+    latestFavorites[favId] = favPayload;
+    saveLocalJSON(STORAGE_FAVS_KEY, latestFavorites);
+    renderFavorites(latestFavorites);
+    if (favoritesRef) {
+        favoritesRef.child(favId).set(favPayload).catch(() => {});
+    }
+    showInfoModal(`“${name}” aggiunto agli acquisti frequenti!`);
 });
 
 // ---------- Rendering Lista Prodotti ----------
@@ -422,7 +518,7 @@ function createItemElement(id, item) {
 
     const nameSpan = document.createElement('span');
     nameSpan.className = 'item-name';
-    nameSpan.textContent = `${item.name} (${qty})`;
+    nameSpan.textContent = item.name;
     textGroup.appendChild(nameSpan);
 
     if (noteText) {
@@ -437,6 +533,9 @@ function createItemElement(id, item) {
 
     const actionsDiv = document.createElement('div');
     actionsDiv.className = 'item-actions';
+
+    const qtyPill = document.createElement('div');
+    qtyPill.className = 'item-qty-pill';
 
     const minusBtn = document.createElement('button');
     minusBtn.type = 'button';
@@ -456,6 +555,10 @@ function createItemElement(id, item) {
     plusBtn.setAttribute('aria-label', `Aumenta quantità di ${item.name}`);
     plusBtn.addEventListener('click', () => updateQty(id, qty, 1));
 
+    qtyPill.appendChild(minusBtn);
+    qtyPill.appendChild(qtyVal);
+    qtyPill.appendChild(plusBtn);
+
     const delBtn = document.createElement('button');
     delBtn.type = 'button';
     delBtn.className = 'delete-item-btn';
@@ -463,9 +566,7 @@ function createItemElement(id, item) {
     delBtn.setAttribute('aria-label', `Elimina ${item.name}`);
     delBtn.addEventListener('click', () => deleteItem(id));
 
-    actionsDiv.appendChild(minusBtn);
-    actionsDiv.appendChild(qtyVal);
-    actionsDiv.appendChild(plusBtn);
+    actionsDiv.appendChild(qtyPill);
     actionsDiv.appendChild(delBtn);
 
     li.appendChild(infoDiv);
@@ -473,10 +574,7 @@ function createItemElement(id, item) {
     return li;
 }
 
-itemsRef.on('value', (snapshot) => {
-    const data = snapshot.val() || {};
-    latestItems = data;
-
+function renderItems(data) {
     pendingContainer.innerHTML = '';
     boughtList.innerHTML = '';
 
@@ -505,7 +603,7 @@ itemsRef.on('value', (snapshot) => {
     if (pCount === 0) {
         const empty = document.createElement('div');
         empty.className = 'empty-state';
-        empty.textContent = 'La lista da comprare è vuota. Aggiungi un prodotto o scegli dai preferiti!';
+        empty.textContent = 'Nessun prodotto da comprare.';
         pendingContainer.appendChild(empty);
     } else {
         CATEGORIES.forEach((cat) => {
@@ -538,57 +636,52 @@ itemsRef.on('value', (snapshot) => {
 
     pendingCount.textContent = pCount;
     boughtCount.textContent = bCount;
-});
-
-function toggleBought(id, currentStatus) {
-    itemsRef.child(id).update({ bought: !currentStatus });
 }
 
-function updateQty(id, currentQtyVal, delta) {
-    const newQty = currentQtyVal + delta;
-    if (newQty > 0) {
-        itemsRef.child(id).update({ quantity: newQty });
-    } else {
-        deleteItem(id);
-    }
+// Render iniziale immediato da localStorage
+renderItems(latestItems);
+renderFavorites(latestFavorites);
+
+// Sincronizzazione Firebase Realtime Database
+if (db && itemsRef && favoritesRef) {
+    db.ref('.info/connected').on('value', (snap) => {
+        firebaseConnected = Boolean(snap.val());
+        if (firebaseConnected) {
+            syncStatusEl.textContent = 'Sincronizzato in tempo reale';
+        }
+    });
+
+    setTimeout(() => {
+        if (!firebaseConnected) {
+            syncStatusEl.textContent = 'Modalità locale (database offline)';
+        }
+    }, 3000);
+
+    itemsRef.on('value', (snapshot) => {
+        firebaseConnected = true;
+        syncStatusEl.textContent = 'Sincronizzato in tempo reale';
+        latestItems = snapshot.val() || {};
+        persistAndRenderItems();
+    }, () => {
+        syncStatusEl.textContent = 'Modalità locale (database non raggiungibile)';
+    });
+
+    favoritesRef.on('value', (snapshot) => {
+        if (!snapshot.exists() && localStorage.getItem('favoritesSeeded') !== '1') {
+            localStorage.setItem('favoritesSeeded', '1');
+            favoritesRef.set(DEFAULT_FAVORITES).catch(() => {});
+            latestFavorites = { ...DEFAULT_FAVORITES };
+        } else {
+            latestFavorites = snapshot.val() || {};
+        }
+        saveLocalJSON(STORAGE_FAVS_KEY, latestFavorites);
+        renderFavorites(latestFavorites);
+    }, () => {
+        // Mantiene i preferiti locali in caso di errore Firebase
+    });
+} else {
+    syncStatusEl.textContent = 'Modalità locale';
 }
-
-function deleteItem(id) {
-    itemsRef.child(id).remove();
-}
-
-// Pulsanti di pulizia con conferme
-clearPendingBtn.addEventListener('click', () => {
-    showModal('Sei sicuro di voler pulire la lista degli oggetti da comprare?', () => {
-        itemsRef.once('value', (snapshot) => {
-            const data = snapshot.val() || {};
-            for (const id in data) {
-                if (!data[id].bought) {
-                    itemsRef.child(id).remove();
-                }
-            }
-        });
-    });
-});
-
-clearBoughtBtn.addEventListener('click', () => {
-    showModal('Sei sicuro di voler rimuovere tutti i prodotti già comprati?', () => {
-        itemsRef.once('value', (snapshot) => {
-            const data = snapshot.val() || {};
-            for (const id in data) {
-                if (data[id].bought) {
-                    itemsRef.child(id).remove();
-                }
-            }
-        });
-    });
-});
-
-deleteAllBtn.addEventListener('click', () => {
-    showModal("Sei sicuro di voler eliminare tutto l'archivio della spesa?", () => {
-        itemsRef.remove();
-    });
-});
 
 // ---------- Banner Installazione PWA (Android & iOS) ----------
 const installBanner = document.getElementById('install-banner');
