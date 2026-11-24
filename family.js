@@ -188,6 +188,27 @@ for (const prefix of ['login', 'reg']) {
     };
 }
 form('login-form', 'login-error', () => auth.signInWithEmailAndPassword(el('login-email').value.trim(), el('login-password').value));
+el('google-login').onclick = async () => {
+    const button = el('google-login');
+    const message = el('google-error');
+    message.hidden = true;
+    button.disabled = true;
+    try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({prompt: 'select_account'});
+        await auth.signInWithPopup(provider);
+    } catch (error) {
+        if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') return;
+        const messages = {
+            'auth/popup-blocked': 'Consenti le finestre popup per questo sito e riprova.',
+            'auth/account-exists-with-different-credential': 'Hai già un account con questa email. Accedi con il metodo che hai usato per registrarti.'
+        };
+        message.textContent = messages[error.code] || 'Accesso con Google non riuscito. Riprova dal browser.';
+        message.hidden = false;
+    } finally {
+        button.disabled = false;
+    }
+};
 let registrationName = '';
 form('register-form', 'register-error', async () => {
     const name = el('reg-name').value.trim();
