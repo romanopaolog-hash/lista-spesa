@@ -25,6 +25,7 @@ function drawer(open) {
 
 function clearFamilyView() {
     subscriptions.splice(0).forEach(stop => stop());
+    clearMemberProfiles();
     drawer(false);
     admin = false;
     el('push-section').hidden = true;
@@ -61,11 +62,19 @@ function action(button, run) {
 
 function peopleList(snapshot, pending) {
     const list = el(pending ? 'pending-requests-list' : 'members-list');
+    if (!pending) clearMemberProfiles();
     list.replaceChildren();
     snapshot.forEach(child => {
         const row = document.createElement('li');
         const label = document.createElement('span');
         label.textContent = child.val().name;
+        if (!pending) {
+            const photo = document.createElement('div');
+            photo.className = 'avatar';
+            photo.setAttribute('aria-hidden', 'true');
+            row.append(photo);
+            bindMemberProfile(child.key, child.val().name, label, photo);
+        }
         row.append(label);
         if (pending) {
             for (const approve of [true, false]) {
@@ -115,6 +124,7 @@ function openShopping(ref, uid) {
 }
 
 function session(user) {
+    resetProfileEditor();
     stopProfile();
     stopPerson();
     clearFamilyView();
@@ -275,6 +285,8 @@ action(el('copy-code-btn'), async () => {
     showInfoModal('Codice di invito copiato.');
 });
 for (const id of ['pending','app','onboarding']) action(el(id + '-signout-btn'), async () => { await forgetPushOwner(); await auth.signOut(); });
+
+initProfileEditor();
 
 try {
     firebase.initializeApp(firebaseConfig);

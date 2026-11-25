@@ -113,6 +113,21 @@
           ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 4096"
         }
       }
+    },
+    "profiles": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || (root.child('users').child(auth.uid).val() != null && root.child('users').child(auth.uid).val() === root.child('users').child($uid).val() && root.child('families').child(root.child('users').child(auth.uid).val()).child('people').child(auth.uid).child('status').val() === 'approved' && root.child('families').child(root.child('users').child(auth.uid).val()).child('people').child($uid).child('status').val() === 'approved'))",
+        ".write": "auth != null && auth.uid === $uid",
+        "nickname": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40"
+        },
+        "photo": {
+          ".validate": "newData.isString() && newData.val().length <= 65536 && newData.val().beginsWith('data:image/jpeg;base64,')"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
     }
   }
 }

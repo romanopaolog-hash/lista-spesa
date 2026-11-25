@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lista-spesa-v5';
+const CACHE_NAME = 'lista-spesa-v6';
 
 const STATIC_ASSETS = [
     './',
@@ -7,6 +7,7 @@ const STATIC_ASSETS = [
     './app.js',
     './firebase-config.js',
     './family.js',
+    './profile.js',
     './notifications.js',
     './manifest.json',
     './icons/icon-192.png',

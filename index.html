@@ -189,6 +189,7 @@
             </div>
         </div>
 
+        <button type="button" class="text-muted-btn open-profile">Il mio profilo</button>
         <button type="button" id="onboarding-signout-btn" class="text-muted-btn">
             <i data-lucide="log-out"></i> Esci dall'account
         </button>
@@ -213,6 +214,7 @@
             <i data-lucide="x-circle"></i>
             <span>Annulla richiesta</span>
         </button>
+        <button type="button" class="text-muted-btn open-profile">Il mio profilo</button>
         <button type="button" id="pending-signout-btn" class="text-muted-btn" style="margin-top:8px;">
             <i data-lucide="log-out"></i> Esci dall'account
         </button>
@@ -240,6 +242,7 @@
                     <i data-lucide="smartphone" class="btn-lucide"></i>
                     <span class="btn-label">Schermo attivo</span>
                 </button>
+                <button type="button" class="icon-btn open-profile" title="Il mio profilo" aria-label="Il mio profilo"><i data-lucide="user"></i></button>
                 <button type="button" id="members-btn" class="icon-btn" aria-label="Membri della famiglia" title="Vedi famiglia">
                     <i data-lucide="users"></i>
                 </button>
@@ -390,6 +393,25 @@
     </div>
 </div>
 
+<dialog id="profile-dialog" aria-labelledby="profile-title">
+    <div class="drawer-header">
+        <h2 id="profile-title">Il mio profilo</h2>
+        <button type="button" id="profile-close" class="icon-btn" aria-label="Chiudi profilo">✕</button>
+    </div>
+    <form id="profile-form" class="auth-form">
+        <div id="profile-preview" class="avatar avatar-large" aria-hidden="true"></div>
+        <label class="field-group">Foto profilo
+            <input type="file" id="profile-file" accept="image/jpeg,image/png,image/webp">
+        </label>
+        <button type="button" id="profile-remove" class="text-action-btn">Rimuovi foto</button>
+        <label class="field-group">Nickname
+            <input id="profile-nickname" maxlength="40" placeholder="Il nome che vedranno i familiari">
+        </label>
+        <p id="profile-feedback" role="status"></p>
+        <button type="submit" id="profile-save" class="btn-primary btn-full">Salva profilo</button>
+    </form>
+</dialog>
+
 <!-- Modale Globale -->
 <div id="custom-modal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true">
     <div class="modal-content">
@@ -403,6 +425,7 @@
 
 <script src="firebase-config.js"></script>
 <script src="app.js"></script>
+<script src="profile.js"></script>
 <script src="family.js"></script>
 <script src="notifications.js"></script>
 </body>
