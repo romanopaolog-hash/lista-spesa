@@ -175,9 +175,18 @@ document.addEventListener('visibilitychange', async () => {
 
 // ---------- Selettore Reparti & Quantità ----------
 for (const category of CATEGORIES) {
-    categorySelect.add(new Option(category.label, category.id));
+    const option = new Option(category.label, category.id);
+    const icon = createLucideIcon(category.icon);
+    icon.setAttribute('aria-hidden', 'true');
+    option.prepend(icon);
+    categorySelect.add(option);
 }
 categorySelect.value = 'Altro';
+categorySelect.addEventListener('change', () => {
+    const category = CATEGORIES[categorySelect.selectedIndex];
+    document.querySelector('.category-symbol').replaceChildren(createLucideIcon(category.icon));
+    refreshIcons();
+});
 
 increaseQtyBtn.addEventListener('click', () => {
     currentQty++;

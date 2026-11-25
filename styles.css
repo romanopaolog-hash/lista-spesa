@@ -369,18 +369,77 @@ h1 {
     gap: 6px;
 }
 .category-field label {
-    font-size: .9rem;
+    color: var(--text-muted);
+    font-size: .82rem;
     font-weight: 600;
 }
+.category-control { position: relative; }
+.category-symbol, .category-chevron {
+    position: absolute;
+    top: 50%;
+    pointer-events: none;
+    z-index: 1;
+}
+.category-symbol {
+    left: 10px;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    transform: translateY(-50%);
+    border-radius: 9px;
+    background: var(--primary-soft);
+    color: var(--primary-color);
+}
+.category-chevron {
+    right: 18px;
+    width: 8px;
+    height: 8px;
+    border: solid var(--text-muted);
+    border-width: 0 2px 2px 0;
+    transform: translateY(-70%) rotate(45deg);
+}
 .category-field select {
+    appearance: none;
     width: 100%;
-    min-height: 44px;
-    padding: 0 12px;
+    min-height: 50px;
+    padding: 0 40px 0 52px;
     border: 1px solid var(--border-color);
-    border-radius: 10px;
+    border-radius: 13px;
     background-color: var(--surface-bg);
     color: var(--text-color);
     font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+.category-field select:hover { border-color: var(--check-border); }
+@supports (appearance: base-select) {
+    .category-field select, .category-field select::picker(select) { appearance: base-select; }
+    .category-field select { align-items: center; }
+    .category-field select::picker-icon { display: none; }
+    .category-field select::picker(select) {
+        margin-block: 4px;
+        padding: 4px;
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        background: var(--card-bg);
+        color: var(--text-color);
+        box-shadow: var(--shadow-float);
+    }
+    .category-field option {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 44px;
+        padding: 6px 12px;
+        border-radius: 9px;
+        font-weight: 500;
+    }
+    .category-field option svg { color: var(--primary-color); }
+    .category-field option:checked { background: var(--primary-soft); font-weight: 650; }
+    .category-field option:is(:hover, :focus-visible) { background: var(--surface-bg); }
+    .category-field option::checkmark { order: 1; margin-left: auto; color: var(--primary-color); }
+    .category-control:has(select:open) .category-chevron { transform: translateY(-30%) rotate(225deg); }
 }
 .category-field select:focus-visible {
     outline: 2px solid var(--primary-color);
