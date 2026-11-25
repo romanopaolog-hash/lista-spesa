@@ -11,6 +11,7 @@ const CATEGORIES = [
 const CATEGORY_IDS = CATEGORIES.map((c) => c.id);
 
 let purchaseHistory = {};
+let hiddenFrequent = {};
 
 let currentQty = 1;
 let latestItems = {};
@@ -311,7 +312,7 @@ function renderFrequentProducts() {
         if (previous) previous.count++;
         else products.set(key, {name: item.name, category: item.category, count: 1});
     }
-    const ranked = [...products.values()].sort((a, b) =>
+    const ranked = [...products.values()].filter(product => !hiddenFrequent[frequentId(product.name)]).sort((a, b) =>
         b.count - a.count || a.name.localeCompare(b.name, 'it'));
     const bar = document.getElementById('frequent-products');
     bar.replaceChildren();
@@ -320,11 +321,27 @@ function renderFrequentProducts() {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'fav-chip';
-        button.textContent = product.name + ' · ' + product.count;
-        button.setAttribute('aria-label', 'Aggiungi ' + product.name + ' alla lista, acquisti: ' + product.count);
+        button.textContent = product.name;
+        button.setAttribute('aria-label', 'Aggiungi ' + product.name + ' alla lista');
         button.onclick = () => addFrequentProduct(product);
-        bar.append(button);
+        const chip = document.createElement('div');
+        chip.className = 'frequent-chip';
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'frequent-remove';
+        remove.setAttribute('aria-label', 'Rimuovi ' + product.name + ' dagli acquisti frequenti');
+        remove.textContent = '×';
+        remove.onclick = () => {
+            const ref = itemsRef?.parent.child('hiddenFrequent').child(frequentId(product.name));
+            if (ref) ref.set(true).catch(shoppingError);
+        };
+        chip.append(button, remove);
+        bar.append(chip);
     }
+}
+
+function frequentId(name) {
+    return Array.from(new TextEncoder().encode(productKey(name)), byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
 function productKey(name) {

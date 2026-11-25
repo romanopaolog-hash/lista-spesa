@@ -103,6 +103,13 @@
               ".validate": false
             }
           }
+        },
+        "hiddenFrequent": {
+          ".read": "auth != null && root.child('users').child(auth.uid).val() === $code && root.child('families').child($code).child('people').child(auth.uid).child('status').val() === 'approved'",
+          "$id": {
+            ".write": "auth != null && root.child('users').child(auth.uid).val() === $code && root.child('families').child($code).child('people').child(auth.uid).child('status').val() === 'approved'",
+            ".validate": "newData.val() === true"
+          }
         }
       }
     },

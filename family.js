@@ -40,6 +40,7 @@ function clearFamilyView() {
     itemsRef = null;
     renderItems(latestItems = {});
     purchaseHistory = {};
+    hiddenFrequent = {};
     renderFrequentProducts();
     resetInputs();
     el('members-list').replaceChildren();
@@ -117,6 +118,10 @@ function openShopping(ref, uid) {
     subscriptions.push(watch(ref.child('people').orderByChild('status').equalTo('approved'), snap => peopleList(snap, false)));
     subscriptions.push(watch(itemsRef, snap => {
         renderItems(latestItems = snap.val() || {});
+        renderFrequentProducts();
+    }));
+    subscriptions.push(watch(ref.child('hiddenFrequent'), snap => {
+        hiddenFrequent = snap.val() || {};
         renderFrequentProducts();
     }));
     subscriptions.push(watch(ref.child('purchases'), snap => {

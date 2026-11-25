@@ -1011,3 +1011,11 @@ h1 {
 .avatar { flex: 0 0 auto; width: 36px; height: 36px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; font-weight: 600; color: var(--primary-color); background: var(--primary-soft); }
 .avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .avatar-large { width: 88px; height: 88px; font-size: 2rem; margin: 6px auto; }
+
+.favorites-section { padding: 16px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; box-shadow: var(--shadow-card); }
+.favorites-title { margin: 0 0 12px; color: var(--text-color); font-size: .85rem; letter-spacing: .02em; }
+.frequent-chip { display: inline-flex; align-items: center; border: 1px solid var(--border-color); border-radius: 12px; background: var(--primary-soft); }
+.frequent-products .fav-chip { border: 0; box-shadow: none; background: transparent; color: var(--text-color); border-radius: 12px; }
+.frequent-remove { width: 34px; height: 36px; border: 0; background: transparent; color: var(--text-muted); font-size: 20px; cursor: pointer; border-radius: 10px; }
+.frequent-remove:hover { color: var(--danger-color); }
+.frequent-chip:focus-within { outline: 2px solid var(--primary-color); outline-offset: 2px; }
