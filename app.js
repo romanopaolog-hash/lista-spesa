@@ -10,14 +10,7 @@ const CATEGORIES = [
 ];
 const CATEGORY_IDS = CATEGORIES.map((c) => c.id);
 
-const DEFAULT_FAVORITES = {
-    fav_pane: { name: 'Pane', category: 'Dispensa' },
-    fav_latte: { name: 'Latte', category: 'Frigo e Latticini' },
-    fav_acqua: { name: 'Acqua', category: 'Dispensa' },
-    fav_uova: { name: 'Uova', category: 'Frigo e Latticini' },
-    fav_caffe: { name: 'Caffè', category: 'Dispensa' },
-    fav_pasta: { name: 'Pasta', category: 'Dispensa' }
-};
+let purchaseHistory = {};
 
 let currentQty = 1;
 let latestItems = {};
@@ -223,7 +216,7 @@ function addItem() {
 
     for (const key in latestItems) {
         const existing = latestItems[key];
-        if (existing && existing.name && existing.name.toLowerCase() === name.toLowerCase()) {
+        if (existing && !existing.bought && existing.name && existing.name.toLowerCase() === name.toLowerCase()) {
             showInfoModal(`“${name}” è già nella lista! Puoi modificarne la quantità direttamente sotto.`);
             resetInputs();
             return;
@@ -255,30 +248,42 @@ addBtn.addEventListener('click', addItem);
 });
 
 function toggleBought(id, currentStatus) {
-    itemsRef?.child(id).update({ bought: !currentStatus }).catch(shoppingError);
+    const item = latestItems[id];
+    if (!itemsRef || !item) return;
+    itemsRef.parent.update({
+        ['items/' + id + '/bought']: !currentStatus,
+        ['purchases/' + id]: currentStatus ? null : { name: item.name, category: item.category }
+    }).catch(shoppingError);
 }
 
 function updateQty(id, delta) {
+    if (delta < 0 && latestItems[id]?.quantity === 1) return deleteItem(id);
     itemsRef?.child(id).transaction(item => {
         if (!item) return;
         const quantity = item.quantity + delta;
-        return quantity > 0 ? { ...item, quantity } : null;
+        return quantity > 0 ? { ...item, quantity } : undefined;
     }).catch(shoppingError);
 }
 
 function deleteItem(id) {
-    itemsRef?.child(id).remove().catch(shoppingError);
+    if (itemsRef && latestItems[id]) removeItems(itemsRef, [[id, latestItems[id]]]);
+}
+
+function removeItems(ref, entries) {
+    const changes = {};
+    for (const [id, item] of entries) {
+        changes['items/' + id] = null;
+        // Conserva anche i comprati registrati dalle versioni precedenti.
+        if (item.bought) changes['purchases/' + id] = {name: item.name, category: item.category};
+    }
+    if (entries.length) ref.parent.update(changes).catch(shoppingError);
 }
 
 function clearItems(message, matches) {
     const ref = itemsRef;
     showModal(message, () => {
         if (!ref || ref !== itemsRef) return;
-        const changes = {};
-        for (const [id, item] of Object.entries(latestItems)) {
-            if (matches(item)) changes[id] = null;
-        }
-        ref.update(changes).catch(shoppingError);
+        removeItems(ref, Object.entries(latestItems).filter(([, item]) => matches(item)));
     });
 }
 
@@ -286,7 +291,41 @@ clearPendingBtn.onclick = () => clearItems('Eliminare i prodotti da comprare?', 
 clearBoughtBtn.onclick = () => clearItems('Eliminare i prodotti già comprati?', item => item.bought);
 deleteAllBtn.onclick = () => clearItems('Eliminare tutti i prodotti della lista?', () => true);
 
-// ---------- Preferiti / Acquisti Frequenti ----------
+function renderFrequentProducts() {
+    const products = new Map();
+    // Una riga ancora presente nella lista ha la precedenza sul suo storico.
+    const receipts = {...purchaseHistory};
+    for (const [id, item] of Object.entries(latestItems)) {
+        if (item.bought) receipts[id] = item;
+        else delete receipts[id];
+    }
+    for (const item of Object.values(receipts)) {
+        const key = productKey(item.name);
+        const previous = products.get(key);
+        if (previous) previous.count++;
+        else products.set(key, {name: item.name, category: item.category, count: 1});
+    }
+    const ranked = [...products.values()].sort((a, b) =>
+        b.count - a.count || a.name.localeCompare(b.name, 'it'));
+    const bar = document.getElementById('frequent-products');
+    bar.replaceChildren();
+    if (!ranked.length) bar.textContent = 'Qui vedrai i prodotti che la famiglia segna come comprati.';
+    for (const product of ranked.slice(0, 6)) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'fav-chip';
+        button.textContent = product.name + ' · ' + product.count;
+        button.setAttribute('aria-label', 'Aggiungi ' + product.name + ' alla lista, acquisti: ' + product.count);
+        button.onclick = () => addFavoriteToShoppingList(product);
+        bar.append(button);
+    }
+}
+
+function productKey(name) {
+    return name.normalize('NFC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('it');
+}
+
+// ---------- Preferiti salvati ----------
 function renderFavorites(data) {
     favoritesBar.innerHTML = '';
     const entries = Object.entries(data || {});
@@ -321,7 +360,7 @@ function renderFavorites(data) {
 
         removeBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            showModal(`Rimuovere “${fav.name}” dagli acquisti frequenti?`, () => {
+            showModal(`Rimuovere “${fav.name}” dai preferiti?`, () => {
                 favoritesRef?.child(favId).remove().catch(shoppingError);
 
             });
@@ -336,20 +375,20 @@ function renderFavorites(data) {
 }
 
 function addFavoriteToShoppingList(fav) {
-    const targetName = fav.name.toLowerCase();
+    const targetName = productKey(fav.name);
     let existingId = null;
 
     for (const id in latestItems) {
         const item = latestItems[id];
-        if (item && item.name && item.name.toLowerCase() === targetName) {
+        if (item && !item.bought && item.name && productKey(item.name) === targetName) {
             existingId = id;
             break;
         }
     }
 
     if (existingId) {
-        itemsRef?.child(existingId).transaction(item => item ? {
-            ...item, bought: false, quantity: item.bought ? 1 : item.quantity + 1
+        itemsRef?.child(existingId).transaction(item => item && !item.bought ? {
+            ...item, quantity: item.quantity + 1
         } : undefined).catch(shoppingError);
 
     } else {

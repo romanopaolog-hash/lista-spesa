@@ -249,21 +249,6 @@
             </div>
         </header>
 
-        <!-- Preferiti -->
-        <section class="favorites-section" aria-label="Prodotti preferiti">
-            <div class="favorites-header">
-                <span class="favorites-title">
-                    <i data-lucide="star" class="inline-icon"></i>
-                    Acquisti frequenti
-                </span>
-                <button type="button" id="add-favorite-btn" class="text-action-btn">
-                    <i data-lucide="plus" class="inline-icon"></i>
-                    Salva preferito
-                </button>
-            </div>
-            <div id="favorites-bar" class="favorites-bar" role="list"></div>
-        </section>
-
         <!-- Scheda Inserimento -->
         <section class="input-card" aria-label="Aggiungi prodotto">
             <div class="input-row-main">
@@ -292,6 +277,16 @@
                 <span class="sync-dot" id="sync-dot"></span>
                 <p id="sync-status" class="sync-status">Connessione in corso...</p>
             </div>
+        </section>
+
+        <section class="favorites-section" aria-labelledby="frequent-title">
+            <h2 id="frequent-title" class="favorites-title">Acquisti frequenti</h2>
+            <div id="frequent-products" class="frequent-products"></div>
+            <details class="saved-favorites">
+                <summary>Preferiti salvati</summary>
+                <button type="button" id="add-favorite-btn" class="text-action-btn">Salva prodotto nei preferiti</button>
+                <div id="favorites-bar" class="favorites-bar" role="list"></div>
+            </details>
         </section>
 
         <!-- DA COMPRARE -->

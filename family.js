@@ -32,6 +32,8 @@ function clearFamilyView() {
     el('pending-requests-section').style.display = 'none';
     itemsRef = favoritesRef = null;
     renderItems(latestItems = {});
+    purchaseHistory = {};
+    renderFrequentProducts();
     renderFavorites(latestFavorites = {});
     resetInputs();
     el('members-list').replaceChildren();
@@ -99,7 +101,14 @@ function openShopping(ref, uid) {
         screen('app');
     }));
     subscriptions.push(watch(ref.child('people').orderByChild('status').equalTo('approved'), snap => peopleList(snap, false)));
-    subscriptions.push(watch(itemsRef, snap => renderItems(latestItems = snap.val() || {})));
+    subscriptions.push(watch(itemsRef, snap => {
+        renderItems(latestItems = snap.val() || {});
+        renderFrequentProducts();
+    }));
+    subscriptions.push(watch(ref.child('purchases'), snap => {
+        purchaseHistory = snap.val() || {};
+        renderFrequentProducts();
+    }));
     subscriptions.push(watch(favoritesRef, snap => renderFavorites(latestFavorites = snap.val() || {})));
     subscriptions.push(watch(db.ref('.info/connected'), snap =>
         setSyncState(snap.val(), snap.val() ? 'Connesso alla famiglia' : 'Offline · in attesa di sincronizzazione')));
@@ -234,7 +243,7 @@ form('create-family-form', 'create-error', async () => {
     const code = Array.from(crypto.getRandomValues(new Uint8Array(8)), b => alphabet[b % 32]).join('');
     await db.ref().update({
         ['users/' + uid]: code,
-        ['families/' + code]: {owner: uid, name, favorites: DEFAULT_FAVORITES,
+        ['families/' + code]: {owner: uid, name,
             people: {[uid]: {name: personName(), status: 'approved'}}}
     });
 });

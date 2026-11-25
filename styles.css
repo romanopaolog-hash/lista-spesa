@@ -959,3 +959,8 @@ h1 {
 #members-btn[data-count]::after { content: attr(data-count); position: absolute; right: -4px; top: -5px; background: var(--primary-color); color: var(--card-bg); border-radius: 10px; font-size: 11px; padding: 1px 4px; }
 .spinner { margin: 16px auto; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border-color); border-top-color: var(--primary-color); animation: loading-spin 1s linear infinite; }
 @keyframes loading-spin { to { transform: rotate(360deg); } }
+
+.frequent-products { display: flex; flex-wrap: wrap; gap: 8px; color: var(--text-muted); font-size: .9rem; }
+.frequent-products .fav-chip { padding: 0 12px; font-family: inherit; }
+.saved-favorites { margin-top: 12px; }
+.saved-favorites summary { cursor: pointer; color: var(--text-muted); font-size: .9rem; }
