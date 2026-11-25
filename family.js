@@ -31,11 +31,10 @@ function clearFamilyView() {
     el('push-section').hidden = true;
     el('push-status').textContent = '';
     el('pending-requests-section').style.display = 'none';
-    itemsRef = favoritesRef = null;
+    itemsRef = null;
     renderItems(latestItems = {});
     purchaseHistory = {};
     renderFrequentProducts();
-    renderFavorites(latestFavorites = {});
     resetInputs();
     el('members-list').replaceChildren();
     el('pending-requests-list').replaceChildren();
@@ -97,7 +96,6 @@ function peopleList(snapshot, pending) {
 
 function openShopping(ref, uid) {
     itemsRef = ref.child('items');
-    favoritesRef = ref.child('favorites');
     el('drawer-invite-code').textContent = ref.key;
     subscriptions.push(watch(ref.child('owner'), snap => {
         admin = snap.val() === uid;
@@ -118,7 +116,6 @@ function openShopping(ref, uid) {
         purchaseHistory = snap.val() || {};
         renderFrequentProducts();
     }));
-    subscriptions.push(watch(favoritesRef, snap => renderFavorites(latestFavorites = snap.val() || {})));
     subscriptions.push(watch(db.ref('.info/connected'), snap =>
         setSyncState(snap.val(), snap.val() ? 'Connesso alla famiglia' : 'Offline · in attesa di sincronizzazione')));
 }

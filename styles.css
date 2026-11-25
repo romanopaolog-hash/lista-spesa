@@ -188,16 +188,9 @@ h1 {
     transform: scale(0.95);
 }
 
-/* Preferiti - Chip tattili */
+/* Acquisti frequenti */
 .favorites-section {
     margin-bottom: 14px;
-}
-
-.favorites-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 8px;
 }
 
 .favorites-title {
@@ -237,19 +230,6 @@ h1 {
     height: 15px;
 }
 
-.favorites-bar {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    padding: 2px 2px 6px;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-}
-
-.favorites-bar::-webkit-scrollbar {
-    display: none;
-}
-
 .fav-chip {
     display: inline-flex;
     align-items: center;
@@ -272,29 +252,6 @@ h1 {
 .fav-chip:active {
     transform: scale(0.95);
     background: var(--primary-soft);
-}
-
-.fav-chip-remove {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
-    cursor: pointer;
-}
-
-.fav-chip-remove svg.lucide {
-    width: 14px;
-    height: 14px;
-}
-
-.fav-chip-remove:hover {
-    background: var(--danger-light);
-    color: var(--danger-color);
 }
 
 /* Scheda Inserimento Compatta */
@@ -962,8 +919,6 @@ h1 {
 
 .frequent-products { display: flex; flex-wrap: wrap; gap: 8px; color: var(--text-muted); font-size: .9rem; }
 .frequent-products .fav-chip { padding: 0 12px; font-family: inherit; }
-.saved-favorites { margin-top: 12px; }
-.saved-favorites summary { cursor: pointer; color: var(--text-muted); font-size: .9rem; }
 #profile-dialog {
     width: min(390px, calc(100% - 28px)); max-height: 90dvh;
     padding: 22px; border: 1px solid var(--border-color); border-radius: 18px;

@@ -1,4 +1,4 @@
-let db, itemsRef, favoritesRef;
+let db, itemsRef;
 
 const CATEGORIES = [
     { id: 'Ortofrutta', label: 'Ortofrutta', icon: 'apple' },
@@ -14,7 +14,6 @@ let purchaseHistory = {};
 
 let currentQty = 1;
 let latestItems = {};
-let latestFavorites = {};
 
 let wakeLockSentinel = null;
 let wakeLockEnabled = false;
@@ -35,8 +34,6 @@ const boughtList = document.getElementById('bought-list');
 const pendingCount = document.getElementById('pending-count');
 const boughtCount = document.getElementById('bought-count');
 const categorySelect = document.getElementById('category-select');
-const favoritesBar = document.getElementById('favorites-bar');
-const addFavoriteBtn = document.getElementById('add-favorite-btn');
 const syncStatusEl = document.getElementById('sync-status');
 const syncDotEl = document.getElementById('sync-dot');
 const themeToggleBtn = document.getElementById('theme-toggle-btn');
@@ -316,7 +313,7 @@ function renderFrequentProducts() {
         button.className = 'fav-chip';
         button.textContent = product.name + ' · ' + product.count;
         button.setAttribute('aria-label', 'Aggiungi ' + product.name + ' alla lista, acquisti: ' + product.count);
-        button.onclick = () => addFavoriteToShoppingList(product);
+        button.onclick = () => addFrequentProduct(product);
         bar.append(button);
     }
 }
@@ -325,57 +322,8 @@ function productKey(name) {
     return name.normalize('NFC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('it');
 }
 
-// ---------- Preferiti salvati ----------
-function renderFavorites(data) {
-    favoritesBar.innerHTML = '';
-    const entries = Object.entries(data || {});
-
-    if (entries.length === 0) {
-        const hint = document.createElement('span');
-        hint.className = 'item-note';
-        hint.textContent = 'Nessun preferito salvato.';
-        favoritesBar.appendChild(hint);
-        return;
-    }
-
-    entries.forEach(([favId, fav]) => {
-        if (!fav || !fav.name) return;
-        const chip = document.createElement('div');
-        chip.className = 'fav-chip';
-        chip.setAttribute('role', 'listitem');
-
-        const labelSpan = document.createElement('span');
-        labelSpan.textContent = fav.name;
-
-        const removeBtn = document.createElement('button');
-        removeBtn.type = 'button';
-        removeBtn.className = 'fav-chip-remove';
-        removeBtn.appendChild(createLucideIcon('x'));
-        removeBtn.setAttribute('aria-label', `Rimuovi ${fav.name} dai preferiti`);
-
-        chip.addEventListener('click', (e) => {
-            if (e.target.closest('.fav-chip-remove')) return;
-            addFavoriteToShoppingList(fav);
-        });
-
-        removeBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            showModal(`Rimuovere “${fav.name}” dai preferiti?`, () => {
-                favoritesRef?.child(favId).remove().catch(shoppingError);
-
-            });
-        });
-
-        chip.appendChild(labelSpan);
-        chip.appendChild(removeBtn);
-        favoritesBar.appendChild(chip);
-    });
-
-    refreshIcons();
-}
-
-function addFavoriteToShoppingList(fav) {
-    const targetName = productKey(fav.name);
+function addFrequentProduct(product) {
+    const targetName = productKey(product.name);
     let existingId = null;
 
     for (const id in latestItems) {
@@ -393,43 +341,16 @@ function addFavoriteToShoppingList(fav) {
 
     } else {
         const payload = {
-            name: formatItemName(fav.name),
+            name: formatItemName(product.name),
             quantity: 1,
             bought: false,
-            category: CATEGORY_IDS.includes(fav.category) ? fav.category : 'Altro'
+            category: CATEGORY_IDS.includes(product.category) ? product.category : 'Altro'
         };
-        if (fav.note) payload.note = fav.note;
 
         itemsRef?.push(payload).catch(shoppingError);
 
     }
 }
-
-addFavoriteBtn.addEventListener('click', () => {
-    const name = formatItemName(itemInput.value);
-    if (!name) {
-        showInfoModal('Scrivi prima il nome di un prodotto nel campo sopra per salvarlo tra i preferiti.');
-        itemInput.focus();
-        return;
-    }
-
-    for (const id in latestFavorites) {
-        if (latestFavorites[id].name && latestFavorites[id].name.toLowerCase() === name.toLowerCase()) {
-            showInfoModal(`“${name}” è già nei preferiti!`);
-            return;
-        }
-    }
-
-    const note = noteInput.value.trim();
-    const favPayload = {
-        name: name,
-        category: categorySelect.value
-    };
-    if (note) favPayload.note = note;
-
-    favoritesRef?.push(favPayload).catch(shoppingError);
-
-});
 
 // ---------- Rendering Lista Prodotti ----------
 function createItemElement(id, item) {
@@ -584,7 +505,6 @@ function renderItems(data) {
 
 // Render iniziale immediato
 renderItems(latestItems);
-renderFavorites(latestFavorites);
 
 // Sincronizzazione Firebase Realtime Database
 function setSyncState(online, message) {
