@@ -900,9 +900,30 @@ h1 {
 .auth-error { color: var(--danger-color); }
 .onboarding-divider, .pending-hint { margin: 18px 0; }
 .onboarding-block-title, .drawer-title { display: flex; align-items: center; gap: 7px; }
-.drawer-overlay { position: fixed; inset: 0; background: #0006; z-index: 89; }
-.members-drawer { position: fixed; inset: 0 0 0 auto; width: min(380px, 94vw); padding: 22px; overflow-y: auto; background: var(--card-bg); z-index: 90; }
-.members-drawer[aria-hidden="true"] { display: none; }
+.area-open { overflow: hidden; }
+.drawer-overlay {
+    position: fixed; inset: 0; background: #0006; z-index: 89;
+    visibility: hidden; opacity: 0;
+    transition: opacity 260ms ease, visibility 0s linear 260ms;
+}
+.area-open .drawer-overlay { opacity: 1; visibility: visible; transition-delay: 0s; }
+.members-drawer {
+    position: fixed; inset: 0 0 0 auto; width: 80vw;
+    padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) 18px;
+    overflow-y: auto; overscroll-behavior: contain; background: var(--card-bg); z-index: 90;
+    transform: translateX(100%); visibility: hidden;
+    transition: transform 300ms cubic-bezier(.22,.68,.15,1), visibility 0s linear 300ms;
+}
+.members-drawer[aria-hidden="false"] { transform: translateX(0); visibility: visible; transition-delay: 0s; }
+.drawer-body, .members-drawer > .drawer-header { max-width: 650px; margin-inline: auto; }
+.area-actions { display: grid; gap: 8px; margin: 12px 0 24px; }
+.area-action {
+    display: flex; align-items: center; gap: 10px; padding: 12px; min-height: 44px;
+    color: var(--text-color); background: var(--surface-bg); border: 1px solid var(--border-color); border-radius: 10px;
+}
+@media (prefers-reduced-motion: reduce) {
+    .members-drawer, .drawer-overlay { transition: none; }
+}
 .drawer-header, .invite-code-row { justify-content: space-between; }
 .drawer-section { padding: 16px 0; border-top: 1px solid var(--border-color); }
 .drawer-family-name { font-size: 1.2rem; font-weight: 700; margin-bottom: 12px; }

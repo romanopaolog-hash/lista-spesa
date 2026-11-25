@@ -242,12 +242,8 @@
                     <i data-lucide="smartphone" class="btn-lucide"></i>
                     <span class="btn-label">Schermo attivo</span>
                 </button>
-                <button type="button" class="icon-btn open-profile" title="Il mio profilo" aria-label="Il mio profilo"><i data-lucide="user"></i></button>
-                <button type="button" id="members-btn" class="icon-btn" aria-label="Membri della famiglia" title="Vedi famiglia">
-                    <i data-lucide="users"></i>
-                </button>
-                <button type="button" id="theme-toggle-btn" class="icon-btn" aria-label="Cambia tema" title="Cambia tema">
-                    <i data-lucide="moon" id="theme-icon"></i>
+                <button type="button" id="members-btn" class="icon-btn" aria-label="Area riservata" title="Area riservata" aria-controls="members-drawer" aria-expanded="false">
+                    <i data-lucide="menu" aria-hidden="true"></i>
                 </button>
             </div>
         </header>
@@ -327,18 +323,20 @@
 <!-- ══════════════════════════════════════════
      DRAWER: Pannello Famiglia
 ══════════════════════════════════════════ -->
-<div id="members-overlay" class="drawer-overlay" style="display:none;"></div>
-<div id="members-drawer" class="members-drawer" aria-label="Pannello famiglia" aria-hidden="true">
+<div id="members-overlay" class="drawer-overlay" aria-hidden="true"></div>
+<div id="members-drawer" class="members-drawer" role="dialog" aria-modal="true" aria-labelledby="area-title" aria-hidden="true" inert>
     <div class="drawer-header">
-        <h2 class="drawer-title">
-            <i data-lucide="users" aria-hidden="true"></i>
-            La famiglia
-        </h2>
+        <h2 id="area-title" class="drawer-title">Area riservata</h2>
         <button type="button" id="close-drawer-btn" class="icon-btn" aria-label="Chiudi pannello">
             <i data-lucide="x"></i>
         </button>
     </div>
     <div class="drawer-body">
+        <div class="area-actions">
+            <button type="button" class="area-action open-profile"><i data-lucide="user"></i> Il mio profilo</button>
+            <button type="button" class="area-action" id="theme-toggle-btn"></button>
+        </div>
+        <h3 class="drawer-title"><i data-lucide="users"></i> Famiglia</h3>
         <!-- Nome famiglia + codice -->
         <div class="drawer-section">
             <div class="drawer-family-name" id="drawer-family-name">—</div>

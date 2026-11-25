@@ -99,11 +99,11 @@ function showInfoModal(message) {
 function applyTheme(theme) {
     if (theme === 'dark') {
         document.documentElement.setAttribute('data-theme', 'dark');
-        themeToggleBtn.innerHTML = '<i data-lucide="sun" id="theme-icon"></i>';
+        themeToggleBtn.innerHTML = '<i data-lucide="sun" id="theme-icon"></i> Tema chiaro';
         if (themeColorMeta) themeColorMeta.setAttribute('content', '#121212');
     } else {
         document.documentElement.setAttribute('data-theme', 'light');
-        themeToggleBtn.innerHTML = '<i data-lucide="moon" id="theme-icon"></i>';
+        themeToggleBtn.innerHTML = '<i data-lucide="moon" id="theme-icon"></i> Tema scuro';
         if (themeColorMeta) themeColorMeta.setAttribute('content', '#1f6f4a');
     }
     refreshIcons();

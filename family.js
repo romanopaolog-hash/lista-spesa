@@ -17,10 +17,16 @@ function screen(name) {
 }
 
 function drawer(open) {
-    el('members-drawer').setAttribute('aria-hidden', String(!open));
-    el('members-drawer').inert = !open;
-    el('members-overlay').style.display = open ? 'block' : 'none';
-    if (open) el('close-drawer-btn').focus();
+    const panel = el('members-drawer');
+    const trigger = el('members-btn');
+    const wasOpen = !panel.inert;
+    el('screen-app').inert = open;
+    panel.inert = !open;
+    panel.setAttribute('aria-hidden', String(!open));
+    trigger.setAttribute('aria-expanded', String(open));
+    document.body.classList.toggle('area-open', open);
+    if (open) el('close-drawer-btn').focus({preventScroll: true});
+    else if (wasOpen) trigger.focus({preventScroll: true});
 }
 
 function clearFamilyView() {
@@ -39,6 +45,7 @@ function clearFamilyView() {
     el('members-list').replaceChildren();
     el('pending-requests-list').replaceChildren();
     el('members-btn').removeAttribute('data-count');
+    el('members-btn').setAttribute('aria-label', 'Area riservata');
     for (const id of ['drawer-family-name','app-family-name','drawer-invite-code']) el(id).textContent = '';
     modal.style.display = 'none';
     modalConfirm.onclick = null;
@@ -90,7 +97,7 @@ function peopleList(snapshot, pending) {
         const button = el('members-btn');
         if (snapshot.exists()) button.dataset.count = snapshot.numChildren();
         else button.removeAttribute('data-count');
-        button.setAttribute('aria-label', 'Famiglia, richieste in attesa: ' + snapshot.numChildren());
+        button.setAttribute('aria-label', 'Area riservata, richieste in attesa: ' + snapshot.numChildren());
     }
 }
 
@@ -276,7 +283,15 @@ el('cancel-request-btn').onclick = leave;
 el('leave-family-btn').onclick = leave;
 el('members-btn').onclick = () => drawer(true);
 el('members-overlay').onclick = el('close-drawer-btn').onclick = () => drawer(false);
-document.addEventListener('keydown', event => { if (event.key === 'Escape') drawer(false); });
+document.addEventListener('keydown', event => {
+    if (el('members-drawer').inert || el('profile-dialog').open || modal.style.display === 'flex') return;
+    if (event.key === 'Escape') drawer(false);
+    if (event.key !== 'Tab') return;
+    const buttons = [...el('members-drawer').querySelectorAll('button:not(:disabled)')].filter(button => button.offsetWidth);
+    const first = buttons[0], last = buttons[buttons.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+});
 action(el('copy-code-btn'), async () => {
     await navigator.clipboard.writeText(family.key);
     showInfoModal('Codice di invito copiato.');
