@@ -39,6 +39,7 @@ function clearFamilyView() {
     el('pending-requests-section').style.display = 'none';
     itemsRef = null;
     renderItems(latestItems = {});
+    shoppingWidget.close();
     purchaseHistory = {};
     hiddenFrequent = {};
     renderFrequentProducts();

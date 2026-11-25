@@ -264,7 +264,7 @@ function toggleBought(id, currentStatus) {
 }
 
 function updateQty(id, delta) {
-    if (delta < 0 && latestItems[id]?.quantity === 1) return deleteItem(id);
+    if (delta < 0 && latestItems[id]?.quantity === 1) return deleteItem(id, false);
     itemsRef?.child(id).transaction(item => {
         if (!item) return;
         const quantity = item.quantity + delta;
@@ -272,31 +272,30 @@ function updateQty(id, delta) {
     }).catch(shoppingError);
 }
 
-function deleteItem(id) {
-    if (itemsRef && latestItems[id]) removeItems(itemsRef, [[id, latestItems[id]]]);
+function deleteItem(id, countRemoved = true) {
+    if (itemsRef && latestItems[id]) removeItems(itemsRef, [[id, latestItems[id]]], countRemoved);
 }
 
-function removeItems(ref, entries) {
+function removeItems(ref, entries, countRemoved = true) {
     const changes = {};
     for (const [id, item] of entries) {
         changes['items/' + id] = null;
-        // Conserva anche i comprati registrati dalle versioni precedenti.
-        if (item.bought) changes['purchases/' + id] = {name: item.name, category: item.category};
+        if (countRemoved || item.bought) changes['purchases/' + id] = {name: item.name, category: item.category};
     }
     if (entries.length) ref.parent.update(changes).catch(shoppingError);
 }
 
-function clearItems(message, matches) {
+function clearItems(message, matches, countRemoved = true) {
     const ref = itemsRef;
     showModal(message, () => {
         if (!ref || ref !== itemsRef) return;
-        removeItems(ref, Object.entries(latestItems).filter(([, item]) => matches(item)));
+        removeItems(ref, Object.entries(latestItems).filter(([, item]) => matches(item)), countRemoved);
     });
 }
 
 clearPendingBtn.onclick = () => clearItems('Eliminare i prodotti da comprare?', item => !item.bought);
 clearBoughtBtn.onclick = () => clearItems('Eliminare i prodotti già comprati?', item => item.bought);
-deleteAllBtn.onclick = () => clearItems('Eliminare tutti i prodotti della lista?', () => true);
+deleteAllBtn.onclick = () => clearItems('Eliminare tutti i prodotti della lista?', () => true, false);
 
 function renderFrequentProducts() {
     const products = new Map();
@@ -457,7 +456,33 @@ function createItemElement(id, item) {
     return li;
 }
 
+const shoppingWidget = document.getElementById('shopping-widget');
+document.getElementById('shopping-widget-open').onclick = () => shoppingWidget.showModal();
+document.getElementById('shopping-widget-close').onclick = () => shoppingWidget.close();
+
+function renderShoppingWidget(data) {
+    const list = shoppingWidget.querySelector('ul');
+    list.replaceChildren();
+    for (const item of Object.values(data)) {
+        if (item.bought) continue;
+        const row = document.createElement('li');
+        const name = document.createElement('strong');
+        name.textContent = item.name;
+        const quantity = document.createElement('span');
+        quantity.textContent = '×' + item.quantity;
+        row.append(name, quantity);
+        if (item.note) {
+            const note = document.createElement('small');
+            note.textContent = item.note;
+            row.append(note);
+        }
+        list.append(row);
+    }
+    shoppingWidget.querySelector('p').hidden = list.childElementCount > 0;
+}
+
 function renderItems(data) {
+    renderShoppingWidget(data);
     pendingContainer.innerHTML = '';
     boughtList.innerHTML = '';
 

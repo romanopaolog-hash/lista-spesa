@@ -49,7 +49,7 @@
             <p class="auth-subtitle">La lista condivisa della tua famiglia</p>
         </div>
 
-        <button type="button" id="google-login" class="btn-secondary btn-full">Continua con Google</button>
+        <button type="button" id="google-login" class="google-signin btn-full"><span class="google-mark" aria-hidden="true">G</span> Continua con Google</button>
         <p id="google-error" class="auth-error" role="alert" hidden></p>
 
         <div class="auth-tabs" role="tablist">
@@ -293,6 +293,7 @@
                 <h2 class="section-title">DA COMPRARE</h2>
                 <span id="pending-count" class="badge">0</span>
             </div>
+            <button type="button" id="shopping-widget-open" class="clear-list-btn"><i data-lucide="list" aria-hidden="true"></i> Vista spesa</button>
             <button type="button" id="clear-pending-btn" class="clear-list-btn"><i data-lucide="eraser"></i><span>Pulisci</span></button>
         </div>
         <div id="pending-container" class="pending-container"></div>
@@ -390,6 +391,15 @@
     </div>
 </div>
 
+<dialog id="shopping-widget" aria-labelledby="shopping-widget-title">
+    <div class="drawer-header">
+        <h2 id="shopping-widget-title">Da comprare</h2>
+        <button type="button" class="icon-btn" id="shopping-widget-close" aria-label="Chiudi vista spesa">×</button>
+    </div>
+    <p>La lista è vuota.</p>
+    <ul></ul>
+</dialog>
+
 <dialog id="profile-dialog" aria-labelledby="profile-title">
     <div class="drawer-header">
         <h2 id="profile-title">Il mio profilo</h2>
@@ -397,8 +407,9 @@
     </div>
     <form id="profile-form" class="auth-form">
         <div id="profile-preview" class="avatar avatar-large" aria-hidden="true"></div>
-        <label class="field-group">Foto profilo
+        <label class="profile-photo-picker">
             <input type="file" id="profile-file" accept="image/jpeg,image/png,image/webp">
+            <span><i data-lucide="camera" aria-hidden="true"></i> Aggiungi o cambia foto</span>
         </label>
         <button type="button" id="profile-remove" class="text-action-btn">Rimuovi foto</button>
         <label class="field-group">Nickname
