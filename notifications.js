@@ -1,10 +1,3 @@
-const pushCacheName = 'lista-spesa-push';
-const pushStateKey = new URL('./push-owner', document.baseURI).href;
-
-async function forgetPushOwner() {
-    if ('caches' in window) await (await caches.open(pushCacheName)).delete(pushStateKey);
-}
-
 async function enablePush() {
     if (!window.firebase?.messaging || !firebase.messaging.isSupported() || !('Notification' in window)) {
         throw new InputError('Questo browser non supporta le push. Su iPhone apri l’app dalla schermata Home.');

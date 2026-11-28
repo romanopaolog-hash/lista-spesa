@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lista-spesa-v7';
+const CACHE_NAME = 'lista-spesa-v8';
 
 const STATIC_ASSETS = [
     './',
@@ -56,7 +56,7 @@ self.addEventListener('fetch', (event) => {
                 }
                 return networkResponse;
             })
-            .catch(() => caches.match(request).then((cached) => cached || caches.match('./index.html')))
+            .catch(() => caches.match(request).then((cached) => cached || (request.mode === 'navigate' ? caches.match('./index.html') : Response.error())))
     );
 });
 

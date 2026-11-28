@@ -1,3 +1,10 @@
+const pushCacheName = 'lista-spesa-push';
+const pushStateKey = new URL('./push-owner', document.baseURI).href;
+
+async function forgetPushOwner() {
+    if ('caches' in window) await (await caches.open(pushCacheName)).delete(pushStateKey);
+}
+
 const el = id => document.getElementById(id);
 let auth, family, admin = false;
 let stopProfile = () => {};
@@ -302,7 +309,7 @@ action(el('copy-code-btn'), async () => {
     await navigator.clipboard.writeText(family.key);
     showInfoModal('Codice di invito copiato.');
 });
-for (const id of ['pending','app','onboarding']) action(el(id + '-signout-btn'), async () => { await forgetPushOwner(); await auth.signOut(); });
+for (const id of ['pending','app','onboarding']) action(el(id + '-signout-btn'), async () => { await forgetPushOwner().catch(() => {}); await auth.signOut(); });
 
 initProfileEditor();
 
